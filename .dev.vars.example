@@ -1,0 +1,5 @@
+# Local authentication is enabled only when both conditions are true:
+# 1. AUTH_MODE is "local"
+# 2. The request hostname is localhost, 127.0.0.1, or ::1
+AUTH_MODE=local
+LOCAL_DEV_USER_EMAIL=developer@example.com
