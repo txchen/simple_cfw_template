@@ -23,6 +23,8 @@ flowchart LR
 - 第一次访问时自动建立用户记录
 - 显示当前登录用户及身份来源
 - 编辑显示名称、头像网址和 IANA 时区
+- 配置驱动的单一 Admin 身份
+- 仅 Admin 可访问的用户列表页面和接口
 - Profile 字段校验与安全错误响应
 - Cloudflare Access logout
 - 仅限 localhost 的本地开发身份
@@ -37,6 +39,8 @@ flowchart LR
 ├── migrations/             # 版本化 D1 schema
 ├── server/
 │   ├── current-user.ts     # Access JWT + 本地身份 + D1 用户模块
+│   ├── admin-role.ts       # 配置 email 与 Admin 身份判定
+│   ├── admin-users.ts      # Admin 用户目录查询模块
 │   ├── profile.ts          # Profile 输入校验
 │   ├── app.ts              # Hono 路由与错误处理
 │   └── index.ts            # Worker entry
@@ -66,7 +70,7 @@ npm run dev
 developer@example.com
 ```
 
-可以在未提交到 Git 的 `.dev.vars` 中修改它。本地身份必须同时满足：
+它同时是默认的本地 Admin。可以在未提交到 Git 的 `.dev.vars` 中分别修改 `LOCAL_DEV_USER_EMAIL` 和 `ADMIN_EMAIL`。本地身份必须同时满足：
 
 - `.dev.vars` 中的 `AUTH_MODE` 是 `local`
 - 请求 hostname 是 `localhost`、`127.0.0.1` 或 `::1`
@@ -128,6 +132,7 @@ npm run db:migrate:remote
 {
   "vars": {
     "AUTH_MODE": "access",
+    "ADMIN_EMAIL": "your-email@example.com",
     "CF_ACCESS_TEAM_DOMAIN": "https://your-team.cloudflareaccess.com",
     "CF_ACCESS_AUD": "Access application 的 AUD tag"
   }
@@ -180,6 +185,28 @@ npm run deploy
 
 不要将 `Cf-Access-Authenticated-User-Email` 单独作为可信身份，也不要删除 Worker 中的 JWT 校验。
 
+## Admin
+
+`ADMIN_EMAIL` 指定唯一的 Admin：
+
+```jsonc
+{
+  "vars": {
+    "ADMIN_EMAIL": "your-email@example.com"
+  }
+}
+```
+
+Admin 判断大小写不敏感，并且只使用已经通过 Access JWT 验证的当前用户 email。Admin 身份不会写进 D1，因此数据库内容不能提升用户权限；修改 Admin 只需要更新配置并重新部署。
+
+Admin 可以访问：
+
+```text
+/admin
+```
+
+页面列出所有已经进入过应用并在 D1 创建记录的用户。`/admin` 导航和 `/api/admin/*` 都由 Worker 进行 server-side Admin 检查；前端隐藏链接只是 UX，不是安全机制。
+
 ## Logout 行为
 
 生产页面的退出按钮指向：
@@ -197,6 +224,7 @@ Cloudflare 会清理 Access cookie。Cloudflare Access 当前的用户 logout �
 | `GET` | `/api/health` | Worker 健康状态 |
 | `GET` | `/api/me` | 验证身份并返回或创建当前用户 |
 | `PATCH` | `/api/me/profile` | 更新当前用户的 Profile |
+| `GET` | `/api/admin/users` | Admin 专用：列出全部用户 |
 
 Profile 请求：
 
@@ -231,8 +259,9 @@ Profile 请求：
 2. `wrangler.jsonc` 中的 Worker name
 3. D1 database name 和 ID
 4. Access team domain 和 AUD
-5. `.dev.vars` 中的本地开发用户 email
-6. 页面名称、配色和实际业务字段
+5. 生产 `ADMIN_EMAIL`
+6. `.dev.vars` 中的本地开发用户与 Admin email
+7. 页面名称、配色和实际业务字段
 
 保留 `migrations/0001_create_users.sql` 和身份模块，就可以在此基础上增加家庭应用自己的表和 `/api/*` 路由。
 
@@ -241,6 +270,8 @@ Profile 请求：
 - Cloudflare Access 是第一层：阻止非允许用户取得网站内容
 - Worker JWT 验证是第二层：不信任可伪造的普通请求 header
 - D1 查询只使用验证后的当前用户 ID
+- Admin 身份只来自配置与已验证 email，不接受数据库或客户端角色字段
+- `/admin` 页面和 `/api/admin/*` 接口都执行 server-side authorization
 - 本地身份同时要求显式 `AUTH_MODE=local` 和 loopback hostname
 - 生产关闭 `workers.dev` 与 preview URLs，只保留受 Access 保护的自定义域名
 - Profile 更新采用字段白名单，不接受任意数据库字段

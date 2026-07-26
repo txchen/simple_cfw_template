@@ -37,6 +37,7 @@ describe("family starter worker", () => {
     expect(firstBody.user).toMatchObject({
       email: "developer@example.com",
       authProvider: "local-dev",
+      isAdmin: true,
     });
     expect(secondBody.user.id).toBe(firstBody.user.id);
 
@@ -136,5 +137,63 @@ describe("family starter worker", () => {
     await expect(response.json()).resolves.toMatchObject({
       error: { code: "authentication_required" },
     });
+  });
+
+  it("lets the configured admin list every user", async () => {
+    const familyEnv: Bindings = {
+      ...env,
+      LOCAL_DEV_USER_EMAIL: "family@example.com",
+    };
+    await app.request("http://localhost/api/me", {}, familyEnv);
+    await app.request("http://localhost/api/me", {}, env);
+
+    const response = await app.request(
+      "http://localhost/api/admin/users",
+      {},
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json<{
+      users: Array<{ email: string; isAdmin: boolean }>;
+    }>();
+    expect(body.users).toHaveLength(2);
+    expect(body.users).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          email: "developer@example.com",
+          isAdmin: true,
+        }),
+        expect.objectContaining({
+          email: "family@example.com",
+          isAdmin: false,
+        }),
+      ]),
+    );
+  });
+
+  it("rejects a non-admin from the admin API", async () => {
+    const familyEnv: Bindings = {
+      ...env,
+      LOCAL_DEV_USER_EMAIL: "family@example.com",
+    };
+
+    const response = await app.request(
+      "http://localhost/api/admin/users",
+      {},
+      familyEnv,
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "admin_required" },
+    });
+
+    const pageResponse = await app.request(
+      "http://localhost/admin",
+      {},
+      familyEnv,
+    );
+    expect(pageResponse.status).toBe(403);
   });
 });

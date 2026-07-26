@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from "vue";
 import type { AppUser, ProfileUpdate } from "../shared/contracts";
+import AdminUsers from "./AdminUsers.vue";
 import { ApiError, getCurrentUser, updateProfile } from "./api";
 
 const user = ref<AppUser | null>(null);
@@ -18,6 +19,7 @@ const form = reactive({
 });
 
 const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+const isAdminPage = window.location.pathname === "/admin";
 
 const initials = computed(() => {
   const source = user.value?.displayName || user.value?.email || "?";
@@ -108,6 +110,10 @@ onMounted(load);
       </a>
 
       <div v-if="user" class="header-user">
+        <nav v-if="user.isAdmin" class="header-nav" aria-label="管理导航">
+          <a v-if="isAdminPage" href="/">返回 Profile</a>
+          <a v-else href="/admin">管理用户</a>
+        </nav>
         <span class="header-email">{{ user.email }}</span>
         <a
           v-if="user.authProvider === 'cloudflare-access'"
@@ -134,6 +140,26 @@ onMounted(load);
           重试
         </button>
       </section>
+
+      <template v-else-if="user && isAdminPage">
+        <section v-if="user.isAdmin" class="hero admin-hero">
+          <p class="eyebrow">ADMIN ONLY</p>
+          <h1>用户管理</h1>
+          <p class="hero-copy">
+            这里列出所有曾经进入过应用并在 D1 建档的用户。
+            Admin 权限来自服务器配置，不保存在用户 Profile 中。
+          </p>
+        </section>
+
+        <AdminUsers v-if="user.isAdmin" />
+
+        <section v-else class="state-card error-state">
+          <span class="state-icon" aria-hidden="true">!</span>
+          <h1>无权访问</h1>
+          <p>这个页面只允许管理员访问。</p>
+          <a class="button primary button-link" href="/">返回 Profile</a>
+        </section>
+      </template>
 
       <template v-else-if="user">
         <section class="hero">

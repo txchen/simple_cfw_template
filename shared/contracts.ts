@@ -9,6 +9,18 @@ export interface AppUser {
   createdAt: string;
   updatedAt: string;
   authProvider: AuthProvider;
+  isAdmin: boolean;
+}
+
+export interface AdminUserSummary {
+  id: string;
+  email: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  timezone: string | null;
+  createdAt: string;
+  updatedAt: string;
+  isAdmin: boolean;
 }
 
 export interface ProfileUpdate {

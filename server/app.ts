@@ -1,6 +1,10 @@
 import { Hono, type MiddlewareHandler } from "hono";
 import type { AppUser } from "../shared/contracts";
 import {
+  createAdminUsersModule,
+  type AdminUsersModule,
+} from "./admin-users";
+import {
   createCurrentUserModule,
   type CurrentUserModule,
 } from "./current-user";
@@ -17,6 +21,7 @@ type HonoEnv = {
 
 export function createApp(
   currentUsers: CurrentUserModule = createCurrentUserModule(),
+  adminUsers: AdminUsersModule = createAdminUsersModule(),
 ) {
   const app = new Hono<HonoEnv>();
 
@@ -33,8 +38,21 @@ export function createApp(
     await next();
   };
 
+  const requireAdmin: MiddlewareHandler<HonoEnv> = async (c, next) => {
+    if (!c.get("currentUser").isAdmin) {
+      throw new HttpError(
+        403,
+        "admin_required",
+        "Administrator access is required.",
+      );
+    }
+    await next();
+  };
+
   app.use("/api/me", requireCurrentUser);
   app.use("/api/me/*", requireCurrentUser);
+  app.use("/api/admin/*", requireCurrentUser);
+  app.use("/api/admin/*", requireAdmin);
 
   app.get("/api/me", (c) => c.json({ user: c.get("currentUser") }));
 
@@ -49,6 +67,18 @@ export function createApp(
     );
     return c.json({ user });
   });
+
+  app.get("/api/admin/users", async (c) => {
+    const users = await adminUsers.list(c.env);
+    return c.json({ users });
+  });
+
+  app.get("/admin", requireCurrentUser, requireAdmin, (c) =>
+    c.env.ASSETS.fetch(c.req.raw),
+  );
+  app.get("/admin/*", requireCurrentUser, requireAdmin, (c) =>
+    c.env.ASSETS.fetch(c.req.raw),
+  );
 
   app.notFound((c) =>
     c.json(

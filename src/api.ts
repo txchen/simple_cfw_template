@@ -1,4 +1,5 @@
 import type {
+  AdminUserSummary,
   ApiErrorBody,
   AppUser,
   ProfileUpdate,
@@ -38,18 +39,37 @@ export async function updateProfile(
   return readUserResponse(response);
 }
 
+export async function getAdminUsers(): Promise<AdminUserSummary[]> {
+  const response = await fetch("/api/admin/users", {
+    credentials: "same-origin",
+    headers: { Accept: "application/json" },
+  });
+  const body = (await response.json()) as
+    | { users: AdminUserSummary[] }
+    | ApiErrorBody;
+
+  if (!response.ok || !("users" in body)) {
+    throw toApiError(body);
+  }
+  return body.users;
+}
+
 async function readUserResponse(response: Response): Promise<AppUser> {
   const body = (await response.json()) as
     | { user: AppUser }
     | ApiErrorBody;
 
   if (!response.ok || !("user" in body)) {
-    const error =
-      "error" in body
-        ? body.error
-        : { code: "unexpected_response", message: "Unexpected API response." };
-    throw new ApiError(error.message, error.code, error.fields);
+    throw toApiError(body);
   }
 
   return body.user;
+}
+
+function toApiError(body: ApiErrorBody | object): ApiError {
+  const error =
+    "error" in body
+      ? (body as ApiErrorBody).error
+      : { code: "unexpected_response", message: "Unexpected API response." };
+  return new ApiError(error.message, error.code, error.fields);
 }

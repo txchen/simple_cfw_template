@@ -3,3 +3,4 @@
 # 2. The request hostname is localhost, 127.0.0.1, or ::1
 AUTH_MODE=local
 LOCAL_DEV_USER_EMAIL=developer@example.com
+ADMIN_EMAIL=developer@example.com

@@ -6,11 +6,13 @@
   "workers_dev": false,
   "preview_urls": false,
   "assets": {
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/admin", "/admin/*"]
   },
   "vars": {
     "AUTH_MODE": "access",
+    "ADMIN_EMAIL": "replace-with-your-admin-email@example.com",
     "CF_ACCESS_TEAM_DOMAIN": "https://your-team.cloudflareaccess.com",
     "CF_ACCESS_AUD": "replace-with-your-access-application-aud"
   },
