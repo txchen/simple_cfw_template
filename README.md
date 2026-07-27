@@ -1,5 +1,7 @@
 # Simple Cloudflare Family App Starter
 
+[![CI](https://github.com/txchen/simple_cfw_template/actions/workflows/ci.yml/badge.svg)](https://github.com/txchen/simple_cfw_template/actions/workflows/ci.yml)
+
 A full-stack Cloudflare starter for private family websites:
 
 - **Cloudflare Access** handles login, sessions, and the allowlist.
