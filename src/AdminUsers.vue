@@ -36,7 +36,7 @@ async function loadUsers() {
     users.value = await getAdminUsers();
   } catch (error) {
     errorMessage.value =
-      error instanceof Error ? error.message : "无法加载用户列表。";
+      error instanceof Error ? error.message : "Unable to load the user list.";
   } finally {
     loading.value = false;
   }
@@ -50,45 +50,45 @@ onMounted(loadUsers);
     <div class="section-heading admin-section-heading">
       <div>
         <p class="eyebrow">USER DIRECTORY</p>
-        <h2>现有用户</h2>
+        <h2>Existing users</h2>
       </div>
 
       <div v-if="!loading && !errorMessage" class="user-stats">
-        <span><strong>{{ users.length }}</strong> 位用户</span>
-        <span><strong>{{ profileCount }}</strong> 份 Profile</span>
+        <span><strong>{{ users.length }}</strong> users</span>
+        <span><strong>{{ profileCount }}</strong> profiles</span>
       </div>
     </div>
 
     <div v-if="loading" class="inline-state" aria-live="polite">
       <span class="spinner" aria-hidden="true"></span>
-      <p>正在读取 D1 用户…</p>
+      <p>Loading users from D1…</p>
     </div>
 
     <div v-else-if="errorMessage" class="inline-state error-state">
       <span class="state-icon" aria-hidden="true">!</span>
       <p>{{ errorMessage }}</p>
       <button class="button primary" type="button" @click="loadUsers">
-        重试
+        Try again
       </button>
     </div>
 
     <div v-else-if="users.length === 0" class="inline-state">
-      <p>目前还没有用户。</p>
+      <p>There are no users yet.</p>
     </div>
 
     <div v-else class="users-table-wrap">
       <table class="users-table">
         <thead>
           <tr>
-            <th>用户</th>
-            <th>时区</th>
-            <th>加入时间</th>
-            <th><span class="sr-only">权限</span></th>
+            <th>User</th>
+            <th>Timezone</th>
+            <th>Member since</th>
+            <th><span class="sr-only">Role</span></th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="listedUser in users" :key="listedUser.id">
-            <td data-label="用户">
+            <td data-label="User">
               <div class="listed-user">
                 <img
                   v-if="listedUser.avatarUrl"
@@ -101,18 +101,18 @@ onMounted(loadUsers);
                   {{ initials(listedUser) }}
                 </span>
                 <span class="listed-identity">
-                  <strong>{{ listedUser.displayName || "未设置姓名" }}</strong>
+                  <strong>{{ listedUser.displayName || "Name not set" }}</strong>
                   <small>{{ listedUser.email }}</small>
                 </span>
               </div>
             </td>
-            <td data-label="时区">
-              {{ listedUser.timezone || "未设置" }}
+            <td data-label="Timezone">
+              {{ listedUser.timezone || "Not set" }}
             </td>
-            <td data-label="加入时间">
+            <td data-label="Member since">
               {{ formatDate(listedUser.createdAt) }}
             </td>
-            <td data-label="权限" class="role-cell">
+            <td data-label="Role" class="role-cell">
               <span v-if="listedUser.isAdmin" class="admin-badge">Admin</span>
               <span v-else class="member-label">Member</span>
             </td>

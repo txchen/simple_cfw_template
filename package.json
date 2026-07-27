@@ -17,8 +17,10 @@
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
+    "@hono/standard-validator": "^0.3.0",
     "hono": "^4.12.32",
     "jose": "^6.2.4",
+    "valibot": "^1.4.2",
     "vue": "^3.5.40"
   },
   "devDependencies": {

@@ -1,61 +1,62 @@
 # Simple Cloudflare Family App Starter
 
-一套用于家庭内部网站的 Cloudflare 全栈模板：
+A full-stack Cloudflare starter for private family websites:
 
-- **Cloudflare Access** 负责登录、会话和允许名单
-- **Hono + Cloudflare Workers** 提供后端接口
-- **D1** 保存应用自己的用户 Profile
-- **Vue 3 + Vite** 提供响应式前端
-- 同一个域名部署前后端，不需要额外处理 CORS
+- **Cloudflare Access** handles login, sessions, and the allowlist.
+- **Hono + Cloudflare Workers** provide the backend API.
+- **D1** stores application-owned user profiles.
+- **Vue 3 + Vite** provide the responsive frontend.
+- Frontend and backend share one domain, so no separate CORS setup is needed.
 
-应用不保存密码，也不创建第二套登录 session。Cloudflare Access 确认访问者身份后，Worker 验证 Access JWT，再根据已验证的 email 在 D1 中查找或自动创建用户。
+The application stores no passwords and creates no second login session. After Cloudflare Access verifies a visitor, the Worker validates the Access JWT and finds or creates a D1 user by verified email address.
 
 ```mermaid
 flowchart LR
-    Browser["家人的浏览器"] --> Access["Cloudflare Access<br/>登录与允许名单"]
-    Access --> Worker["Hono Worker<br/>验证 Access JWT"]
-    Worker --> D1["D1<br/>用户与 Profile"]
+    Browser["Family browser"] --> Access["Cloudflare Access<br/>Login and allowlist"]
+    Access --> Worker["Hono Worker<br/>Access JWT verification"]
+    Worker --> D1["D1<br/>Users and profiles"]
     Worker --> Vue["Vue SPA"]
 ```
 
-## 已有功能
+## Features
 
-- 第一次访问时自动建立用户记录
-- 显示当前登录用户及身份来源
-- 编辑显示名称、头像网址和 IANA 时区
-- 配置驱动的单一 Admin 身份
-- 仅 Admin 可访问的用户列表页面和接口
-- Profile 字段校验与安全错误响应
+- Automatic user creation on first visit
+- Current user and identity provider display
+- Editable display name, avatar URL, and IANA timezone
+- Configuration-driven single administrator
+- Administrator-only user directory page and API
+- Valibot + Hono Standard Schema request validation
+- Stable field validation and safe API error responses
 - Cloudflare Access logout
-- 仅限 localhost 的本地开发身份
-- D1 SQL migration
-- Workers 运行时中的 D1 集成测试
-- 手机与桌面响应式页面
+- Localhost-only development identity
+- Versioned D1 SQL migrations
+- D1 integration tests inside the Workers runtime
+- Responsive mobile and desktop layouts
 
-## 项目结构
+## Project structure
 
 ```text
 .
-├── migrations/             # 版本化 D1 schema
+├── migrations/             # Versioned D1 schema
 ├── server/
-│   ├── current-user.ts     # Access JWT + 本地身份 + D1 用户模块
-│   ├── admin-role.ts       # 配置 email 与 Admin 身份判定
-│   ├── admin-users.ts      # Admin 用户目录查询模块
-│   ├── profile.ts          # Profile 输入校验
-│   ├── app.ts              # Hono 路由与错误处理
-│   └── index.ts            # Worker entry
-├── shared/                 # 前后端共用的数据契约
+│   ├── current-user.ts     # Access JWT, local identity, and D1 user module
+│   ├── admin-role.ts       # Configured email and administrator check
+│   ├── admin-users.ts      # Administrator user directory module
+│   ├── profile.ts          # Schema issue to API error adapter
+│   ├── app.ts              # Hono routes and error handling
+│   └── index.ts            # Worker entry point
+├── shared/                 # Shared contracts and Valibot schema
 ├── src/                    # Vue SPA
-├── test/                   # Workers + 本地 D1 集成测试
+├── test/                   # Workers and local D1 integration tests
 ├── vite.config.ts
 └── wrangler.jsonc
 ```
 
-`current-user.ts` 是身份模块的主要 seam。Hono 路由只需要调用 `resolve()` 获得当前应用用户；Access JWT 验证、localhost 身份、D1 自动建档以及重新加入 Access 后的 subject 更新都封装在模块内部。
+`current-user.ts` is the main identity seam. Hono routes call `resolve()` to obtain the current application user. Access JWT verification, localhost identity, automatic D1 provisioning, and Access subject updates after a user rejoins are encapsulated inside the module.
 
-## 本地开始
+## Local development
 
-需要 Node.js 20.19+ 和一个 Cloudflare 账号。
+Requires Node.js 20.19+ and a Cloudflare account.
 
 ```bash
 npm install
@@ -64,38 +65,38 @@ npm run db:migrate:local
 npm run dev
 ```
 
-打开 Vite 输出的 localhost 地址。默认本地用户是：
+Open the localhost URL printed by Vite. The default local user is:
 
 ```text
 developer@example.com
 ```
 
-它同时是默认的本地 Admin。可以在未提交到 Git 的 `.dev.vars` 中分别修改 `LOCAL_DEV_USER_EMAIL` 和 `ADMIN_EMAIL`。本地身份必须同时满足：
+This user is also the default local administrator. Override `LOCAL_DEV_USER_EMAIL` and `ADMIN_EMAIL` in the untracked `.dev.vars` file as needed. Local identity requires both conditions:
 
-- `.dev.vars` 中的 `AUTH_MODE` 是 `local`
-- 请求 hostname 是 `localhost`、`127.0.0.1` 或 `::1`
+- `AUTH_MODE` is `local` in `.dev.vars`.
+- The request hostname is `localhost`, `127.0.0.1`, or `::1`.
 
-生产配置固定使用 `AUTH_MODE=access`，而且不包含本地用户 email。即使生产环境收到一个使用 localhost URL 构造的内部请求，也仍然必须携带有效的 Access JWT。
+Production configuration always uses `AUTH_MODE=access` and contains no local user email. A production request must carry a valid Access JWT even if its internal request URL uses a localhost hostname.
 
-本地 D1 数据默认由 Wrangler 持久化到 `.wrangler/`。需要重建时，可以删除对应的本地开发数据，再重新执行 migration；不要对远程数据库使用这种做法。
+Wrangler persists local D1 state under `.wrangler/`. To rebuild local data, remove the relevant local development state and apply the migration again. Never use that reset procedure against the remote database.
 
-## Cloudflare 部署配置
+## Cloudflare deployment
 
-### 1. 登录 Wrangler
+### 1. Log in to Wrangler
 
 ```bash
 npx wrangler login
 ```
 
-### 2. 创建 D1 数据库
+### 2. Create a D1 database
 
-复制项目后，先给 Worker 和数据库改名：
+Rename the Worker and database after copying this starter, then create the database:
 
 ```bash
 npx wrangler d1 create your-app-db
 ```
 
-将输出的 database ID 写入 `wrangler.jsonc`：
+Copy the returned database ID into `wrangler.jsonc`:
 
 ```jsonc
 {
@@ -104,29 +105,29 @@ npx wrangler d1 create your-app-db
     {
       "binding": "DB",
       "database_name": "your-app-db",
-      "database_id": "这里填写真实 database ID",
+      "database_id": "your-real-database-id",
       "migrations_dir": "migrations"
     }
   ]
 }
 ```
 
-应用 migration：
+Apply the migration:
 
 ```bash
 npm run db:migrate:remote
 ```
 
-### 3. 创建 Cloudflare Access 应用
+### 3. Create a Cloudflare Access application
 
-在 Cloudflare Zero Trust 中创建一个 **Self-hosted application**：
+Create a **Self-hosted application** in Cloudflare Zero Trust:
 
-1. 填写准备给 Worker 使用的自定义域名，例如 `family.example.com`
-2. 创建 Allow policy，只包含获准访问的家庭成员 email
-3. 记下 Access application 的 **AUD tag**
-4. 记下团队域名，例如 `https://your-team.cloudflareaccess.com`
+1. Enter the custom domain that the Worker will use, such as `family.example.com`.
+2. Create an Allow policy containing only approved family email addresses.
+3. Record the Access application's **AUD tag**.
+4. Record the team domain, such as `https://your-team.cloudflareaccess.com`.
 
-将它们写入 `wrangler.jsonc`：
+Add the values to `wrangler.jsonc`:
 
 ```jsonc
 {
@@ -134,18 +135,18 @@ npm run db:migrate:remote
     "AUTH_MODE": "access",
     "ADMIN_EMAIL": "your-email@example.com",
     "CF_ACCESS_TEAM_DOMAIN": "https://your-team.cloudflareaccess.com",
-    "CF_ACCESS_AUD": "Access application 的 AUD tag"
+    "CF_ACCESS_AUD": "your-access-application-aud"
   }
 }
 ```
 
-这两个 Access 值不是密码。真正的安全性来自 Access 签发的 JWT、Cloudflare 的签名密钥以及 Worker 对 issuer、audience、有效期和 token 类型的验证。
+The Access values are not passwords. Security comes from the JWT issued by Access, Cloudflare's signing keys, and the Worker's checks for issuer, audience, expiration, and token type.
 
-### 4. 配置 Worker 域名
+### 4. Configure the Worker domain
 
-模板默认关闭 `workers.dev` 和 preview URLs，避免出现绕过 Access 的备用公开地址。因此部署前需要给 Worker 配置与 Access application 完全一致的 Custom Domain。
+The starter disables `workers.dev` and preview URLs to avoid alternate public addresses that bypass Access. Before deployment, configure a Custom Domain that exactly matches the Access application.
 
-推荐在 `wrangler.jsonc` 中维护：
+The recommended configuration lives in `wrangler.jsonc`:
 
 ```jsonc
 {
@@ -158,36 +159,36 @@ npm run db:migrate:remote
 }
 ```
 
-也可以部署 Worker 后在 Cloudflare Dashboard 中添加 Custom Domain；在完成绑定之前，这个 fail-closed 配置不会提供公开访问地址。复制 starter 时域名各不相同，因此模板没有预置 route。
+You may instead add the Custom Domain in the Cloudflare dashboard after deployment. Until the domain is connected, this fail-closed configuration exposes no public URL. The starter does not ship a route because every copied project uses a different domain.
 
-Access 应覆盖整个网站，而不只是 `/api/*`。这样 HTML、JavaScript 和接口都会先经过 Access。
+Access should protect the entire website, not only `/api/*`, so HTML, JavaScript, and API requests all pass through Access first.
 
-### 5. 部署
+### 5. Deploy
 
 ```bash
 npm run deploy
 ```
 
-`deploy` 会先执行类型检查、集成测试和生产构建，全部通过后才调用 Wrangler。
+The deploy script runs type checking, integration tests, and a production build before invoking Wrangler.
 
-## 身份与用户记录
+## Identity and user records
 
-生产请求必须带有 Cloudflare 注入的 `Cf-Access-Jwt-Assertion`。Worker 会：
+Production requests must contain the Cloudflare-injected `Cf-Access-Jwt-Assertion`. The Worker:
 
-1. 从团队域名读取 Access JWKS
-2. 验证 RS256 签名
-3. 验证 issuer 和应用 AUD
-4. 验证有效期以及 `type === "app"`
-5. 读取经过验证的 `sub` 和 email
-6. 按规范化后的 email 查找或创建 D1 用户
+1. Fetches Access JWKS from the team domain.
+2. Verifies the RS256 signature.
+3. Verifies the issuer and application audience.
+4. Verifies expiration and `type === "app"`.
+5. Reads the verified `sub` and email.
+6. Finds or creates a D1 user by normalized email.
 
-应用使用自己的 UUID 作为用户主键。email 是已验证的登录身份，`access_subject` 会保留最新的 Access subject。家庭成员从 Zero Trust 删除后再重新加入时，Access subject 可能改变；再次登录会按 email 找回原 Profile 并更新 subject。
+The application uses its own UUID as the user primary key. Email is the verified login identity, while `access_subject` retains the latest Access subject. If a family member is removed from Zero Trust and later added again, their Access subject may change. The next login finds the original profile by email and updates the subject.
 
-不要将 `Cf-Access-Authenticated-User-Email` 单独作为可信身份，也不要删除 Worker 中的 JWT 校验。
+Do not trust `Cf-Access-Authenticated-User-Email` by itself, and do not remove JWT verification from the Worker.
 
-## Admin
+## Administrator
 
-`ADMIN_EMAIL` 指定唯一的 Admin：
+`ADMIN_EMAIL` identifies the only administrator:
 
 ```jsonc
 {
@@ -197,36 +198,36 @@ npm run deploy
 }
 ```
 
-Admin 判断大小写不敏感，并且只使用已经通过 Access JWT 验证的当前用户 email。Admin 身份不会写进 D1，因此数据库内容不能提升用户权限；修改 Admin 只需要更新配置并重新部署。
+The comparison is case-insensitive and uses only the current user's JWT-verified email. Administrator status is never stored in D1, so database content cannot grant privileges. Change the administrator by updating configuration and redeploying.
 
-Admin 可以访问：
+The administrator page is available at:
 
 ```text
 /admin
 ```
 
-页面列出所有已经进入过应用并在 D1 创建记录的用户。`/admin` 导航和 `/api/admin/*` 都由 Worker 进行 server-side Admin 检查；前端隐藏链接只是 UX，不是安全机制。
+It lists every user who has entered the application and received a D1 record. Both `/admin` navigation and `/api/admin/*` enforce server-side administrator checks. Hiding a frontend link is only a user experience detail, not a security control.
 
-## Logout 行为
+## Logout behavior
 
-生产页面的退出按钮指向：
+The production logout button points to:
 
 ```text
 /cdn-cgi/access/logout
 ```
 
-Cloudflare 会清理 Access cookie。Cloudflare Access 当前的用户 logout 会退出整个 Access 会话，而不是只退出这一个应用；其他受同一团队保护的应用也可能需要重新登录。
+Cloudflare clears the Access cookie. Access currently logs the user out of the entire team session, so other protected applications under the same team may also require a new login.
 
-## 后端接口
+## Backend API
 
-| Method | Path | 说明 |
+| Method | Path | Description |
 | --- | --- | --- |
-| `GET` | `/api/health` | Worker 健康状态 |
-| `GET` | `/api/me` | 验证身份并返回或创建当前用户 |
-| `PATCH` | `/api/me/profile` | 更新当前用户的 Profile |
-| `GET` | `/api/admin/users` | Admin 专用：列出全部用户 |
+| `GET` | `/api/health` | Report Worker health |
+| `GET` | `/api/me` | Verify identity and return or create the current user |
+| `PATCH` | `/api/me/profile` | Update the current user's profile |
+| `GET` | `/api/admin/users` | List all users for the administrator |
 
-Profile 请求：
+Profile request:
 
 ```json
 {
@@ -236,43 +237,45 @@ Profile 请求：
 }
 ```
 
-每个字段都可以传 `null` 清空。客户端不能提交 user ID，因此 Profile 更新始终作用于 JWT 对应的当前用户。
+Each field may be `null` to clear it. Clients cannot submit a user ID, so profile updates always apply to the user identified by the JWT.
 
-## 常用命令
+The runtime schema lives in `shared/profile.ts`, and the `ProfileUpdate` TypeScript type is inferred directly from it. Hono uses the schema through `@hono/standard-validator`. A project adapter converts validation issues into stable `422` field errors and preserves malformed JSON as a separate `400 invalid_json` response. The Standard Schema boundary also keeps routes independent from validator-specific middleware.
 
-| 命令 | 用途 |
+## Commands
+
+| Command | Purpose |
 | --- | --- |
-| `npm run dev` | 在 Workers runtime 中启动 Vite 开发环境 |
-| `npm run db:migrate:local` | 对本地 D1 应用 migration |
-| `npm run db:migrate:remote` | 对远程 D1 应用 migration |
-| `npm run typecheck` | 检查 Vue、Worker 和构建配置类型 |
-| `npm run test:run` | 在 Workers runtime 中运行一次测试 |
-| `npm run build` | 构建 Worker 和 Vue 资产 |
-| `npm run check` | 类型检查、测试和生产构建 |
-| `npm run deploy` | 验证后部署到 Cloudflare |
+| `npm run dev` | Start Vite in the Workers runtime |
+| `npm run db:migrate:local` | Apply migrations to local D1 |
+| `npm run db:migrate:remote` | Apply migrations to remote D1 |
+| `npm run typecheck` | Check Vue, Worker, and build configuration types |
+| `npm run test:run` | Run the Workers integration tests once |
+| `npm run build` | Build the Worker and Vue assets |
+| `npm run check` | Run type checking, tests, and production build |
+| `npm run deploy` | Validate and deploy to Cloudflare |
 
-## 复制成新项目时
+## Copying this starter
 
-至少修改以下内容：
+At minimum, update:
 
-1. `package.json` 中的 package name
-2. `wrangler.jsonc` 中的 Worker name
-3. D1 database name 和 ID
-4. Access team domain 和 AUD
-5. 生产 `ADMIN_EMAIL`
-6. `.dev.vars` 中的本地开发用户与 Admin email
-7. 页面名称、配色和实际业务字段
+1. The package name in `package.json`.
+2. The Worker name in `wrangler.jsonc`.
+3. The D1 database name and ID.
+4. The Access team domain and AUD.
+5. The production `ADMIN_EMAIL`.
+6. The local development user and administrator email in `.dev.vars`.
+7. The page name, colors, and application-specific fields.
 
-保留 `migrations/0001_create_users.sql` 和身份模块，就可以在此基础上增加家庭应用自己的表和 `/api/*` 路由。
+Keep `migrations/0001_create_users.sql` and the identity module, then add tables and `/api/*` routes for the family application.
 
-## 安全边界
+## Security boundaries
 
-- Cloudflare Access 是第一层：阻止非允许用户取得网站内容
-- Worker JWT 验证是第二层：不信任可伪造的普通请求 header
-- D1 查询只使用验证后的当前用户 ID
-- Admin 身份只来自配置与已验证 email，不接受数据库或客户端角色字段
-- `/admin` 页面和 `/api/admin/*` 接口都执行 server-side authorization
-- 本地身份同时要求显式 `AUTH_MODE=local` 和 loopback hostname
-- 生产关闭 `workers.dev` 与 preview URLs，只保留受 Access 保护的自定义域名
-- Profile 更新采用字段白名单，不接受任意数据库字段
-- Access cookie 由 Cloudflare 管理，Vue 不读取或保存 token
+- Cloudflare Access blocks visitors outside the allowlist.
+- Worker JWT verification rejects forged ordinary request headers.
+- D1 queries use only the verified current user ID.
+- Administrator status comes only from configuration and verified email.
+- Both `/admin` and `/api/admin/*` enforce server-side authorization.
+- Local identity requires explicit `AUTH_MODE=local` and a loopback hostname.
+- Production disables `workers.dev` and preview URLs.
+- Profile updates use an allowlist of fields rather than arbitrary database keys.
+- Cloudflare manages the Access cookie; Vue never reads or stores the token.

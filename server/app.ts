@@ -1,5 +1,8 @@
+import { sValidator } from "@hono/standard-validator";
 import { Hono, type MiddlewareHandler } from "hono";
+import { HTTPException } from "hono/http-exception";
 import type { AppUser } from "../shared/contracts";
+import { profileUpdateSchema } from "../shared/profile";
 import {
   createAdminUsersModule,
   type AdminUsersModule,
@@ -10,7 +13,7 @@ import {
 } from "./current-user";
 import type { Bindings } from "./env";
 import { HttpError } from "./errors";
-import { parseProfileUpdate } from "./profile";
+import { profileValidationError } from "./profile";
 
 type HonoEnv = {
   Bindings: Bindings;
@@ -56,17 +59,25 @@ export function createApp(
 
   app.get("/api/me", (c) => c.json({ user: c.get("currentUser") }));
 
-  app.patch("/api/me/profile", async (c) => {
-    const currentUser = c.get("currentUser");
-    const profile = await parseProfileUpdate(c.req.raw);
-    const user = await currentUsers.updateProfile(
-      currentUser.id,
-      profile,
-      currentUser.authProvider,
-      c.env,
-    );
-    return c.json({ user });
-  });
+  app.patch(
+    "/api/me/profile",
+    sValidator("json", profileUpdateSchema, (result) => {
+      if (!result.success) {
+        throw profileValidationError(result.error);
+      }
+    }),
+    async (c) => {
+      const currentUser = c.get("currentUser");
+      const profile = c.req.valid("json");
+      const user = await currentUsers.updateProfile(
+        currentUser.id,
+        profile,
+        currentUser.authProvider,
+        c.env,
+      );
+      return c.json({ user });
+    },
+  );
 
   app.get("/api/admin/users", async (c) => {
     const users = await adminUsers.list(c.env);
@@ -103,6 +114,22 @@ export function createApp(
           },
         },
         error.status,
+      );
+    }
+
+    if (
+      error instanceof HTTPException &&
+      error.status === 400 &&
+      error.message === "Malformed JSON in request body"
+    ) {
+      return c.json(
+        {
+          error: {
+            code: "invalid_json",
+            message: "The request body must be valid JSON.",
+          },
+        },
+        400,
       );
     }
 

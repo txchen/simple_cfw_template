@@ -1,3 +1,7 @@
+import type { ProfileUpdate } from "./profile";
+
+export type { ProfileUpdate } from "./profile";
+
 export type AuthProvider = "cloudflare-access" | "local-dev";
 
 export interface AppUser {
@@ -21,12 +25,6 @@ export interface AdminUserSummary {
   createdAt: string;
   updatedAt: string;
   isAdmin: boolean;
-}
-
-export interface ProfileUpdate {
-  displayName: string | null;
-  avatarUrl: string | null;
-  timezone: string | null;
 }
 
 export interface ApiErrorBody {

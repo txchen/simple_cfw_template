@@ -108,6 +108,72 @@ describe("family starter worker", () => {
     ]);
   });
 
+  it("keeps malformed JSON distinct from schema validation errors", async () => {
+    const response = await app.request(
+      "http://localhost/api/me/profile",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: "{not-json",
+      },
+      env,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "invalid_json",
+        message: "The request body must be valid JSON.",
+      },
+    });
+  });
+
+  it("normalizes optional profile strings", async () => {
+    await app.request("http://localhost/api/me", {}, env);
+
+    const response = await app.request(
+      "http://localhost/api/me/profile",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          displayName: "  Hibiki  ",
+          avatarUrl: "",
+        }),
+      },
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      user: {
+        displayName: "Hibiki",
+        avatarUrl: null,
+        timezone: null,
+      },
+    });
+  });
+
+  it("requires the profile body to be an object", async () => {
+    const response = await app.request(
+      "http://localhost/api/me/profile",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(["not", "an", "object"]),
+      },
+      env,
+    );
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: "invalid_profile",
+        message: "The profile must be a JSON object.",
+      },
+    });
+  });
+
   it("never uses the local identity on a public hostname", async () => {
     const response = await app.request(
       "https://family.example.com/api/me",
