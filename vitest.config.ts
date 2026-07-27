@@ -16,7 +16,7 @@ export default defineConfig({
           bindings: {
             AUTH_MODE: "local",
             LOCAL_DEV_USER_EMAIL: "developer@example.com",
-            ADMIN_EMAIL: "developer@example.com",
+            ADMIN_EMAILS: "developer@example.com",
             TEST_MIGRATIONS: migrations,
           },
         },

@@ -12,7 +12,7 @@
   },
   "vars": {
     "AUTH_MODE": "access",
-    "ADMIN_EMAIL": "replace-with-your-admin-email@example.com",
+    "ADMIN_EMAILS": "first-parent@example.com,second-parent@example.com",
     "CF_ACCESS_TEAM_DOMAIN": "https://your-team.cloudflareaccess.com",
     "CF_ACCESS_AUD": "replace-with-your-access-application-aud"
   },

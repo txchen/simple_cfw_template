@@ -61,7 +61,7 @@ export function createCurrentUserModule(
           : await getAccessIdentity(request, env, verifyAccessJwt);
 
       const row = await findOrCreateUser(identity, env.DB);
-      return toAppUser(row, identity.authProvider, env.ADMIN_EMAIL);
+      return toAppUser(row, identity.authProvider, env);
     },
 
     async updateProfile(userId, profile, authProvider, env) {
@@ -86,7 +86,7 @@ export function createCurrentUserModule(
       }
 
       const row = await findUserById(userId, env.DB);
-      return toAppUser(row, authProvider, env.ADMIN_EMAIL);
+      return toAppUser(row, authProvider, env);
     },
   };
 }
@@ -307,7 +307,7 @@ async function findUserById(
 function toAppUser(
   row: UserRow,
   authProvider: AuthProvider,
-  adminEmail: string,
+  env: Bindings,
 ): AppUser {
   return {
     id: row.id,
@@ -318,6 +318,6 @@ function toAppUser(
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     authProvider,
-    isAdmin: hasAdminRole(row.email, adminEmail),
+    isAdmin: hasAdminRole(row.email, env),
   };
 }

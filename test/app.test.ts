@@ -205,29 +205,47 @@ describe("family starter worker", () => {
     });
   });
 
-  it("lets the configured admin list every user", async () => {
+  it("lets every configured admin manage users", async () => {
+    const adminEmails =
+      " developer@example.com, SECOND-PARENT@example.com, developer@example.com ";
     const familyEnv: Bindings = {
       ...env,
       LOCAL_DEV_USER_EMAIL: "family@example.com",
+      ADMIN_EMAILS: adminEmails,
     };
+    const firstAdminEnv: Bindings = {
+      ...env,
+      ADMIN_EMAILS: adminEmails,
+    };
+    const secondAdminEnv: Bindings = {
+      ...env,
+      LOCAL_DEV_USER_EMAIL: "second-parent@example.com",
+      ADMIN_EMAILS: adminEmails,
+    };
+
     await app.request("http://localhost/api/me", {}, familyEnv);
-    await app.request("http://localhost/api/me", {}, env);
+    await app.request("http://localhost/api/me", {}, firstAdminEnv);
+    await app.request("http://localhost/api/me", {}, secondAdminEnv);
 
     const response = await app.request(
       "http://localhost/api/admin/users",
       {},
-      env,
+      secondAdminEnv,
     );
 
     expect(response.status).toBe(200);
     const body = await response.json<{
       users: Array<{ email: string; isAdmin: boolean }>;
     }>();
-    expect(body.users).toHaveLength(2);
+    expect(body.users).toHaveLength(3);
     expect(body.users).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           email: "developer@example.com",
+          isAdmin: true,
+        }),
+        expect.objectContaining({
+          email: "second-parent@example.com",
           isAdmin: true,
         }),
         expect.objectContaining({
@@ -236,6 +254,22 @@ describe("family starter worker", () => {
         }),
       ]),
     );
+  });
+
+  it("accepts the legacy single-admin setting as a fallback", async () => {
+    const legacyEnv: Bindings = {
+      ...env,
+      ADMIN_EMAILS: undefined,
+      ADMIN_EMAIL: "developer@example.com",
+    };
+
+    const response = await app.request(
+      "http://localhost/api/admin/users",
+      {},
+      legacyEnv,
+    );
+
+    expect(response.status).toBe(200);
   });
 
   it("rejects a non-admin from the admin API", async () => {

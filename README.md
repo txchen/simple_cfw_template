@@ -25,7 +25,7 @@ flowchart LR
 - Automatic user creation on first visit
 - Current user and identity provider display
 - Editable display name, avatar URL, and IANA timezone
-- Configuration-driven single administrator
+- Configuration-driven administrator allowlist
 - Administrator-only user directory page and API
 - Valibot + Hono Standard Schema request validation
 - Stable field validation and safe API error responses
@@ -42,7 +42,7 @@ flowchart LR
 ├── migrations/             # Versioned D1 schema
 ├── server/
 │   ├── current-user.ts     # Access JWT, local identity, and D1 user module
-│   ├── admin-role.ts       # Configured email and administrator check
+│   ├── admin-role.ts       # Configured email allowlist and administrator check
 │   ├── admin-users.ts      # Administrator user directory module
 │   ├── profile.ts          # Schema issue to API error adapter
 │   ├── app.ts              # Hono routes and error handling
@@ -73,7 +73,7 @@ Open the localhost URL printed by Vite. The default local user is:
 developer@example.com
 ```
 
-This user is also the default local administrator. Override `LOCAL_DEV_USER_EMAIL` and `ADMIN_EMAIL` in the untracked `.dev.vars` file as needed. Local identity requires both conditions:
+This user is also a default local administrator. Override `LOCAL_DEV_USER_EMAIL` and the comma-separated `ADMIN_EMAILS` list in the untracked `.dev.vars` file as needed. Local identity requires both conditions:
 
 - `AUTH_MODE` is `local` in `.dev.vars`.
 - The request hostname is `localhost`, `127.0.0.1`, or `::1`.
@@ -135,7 +135,7 @@ Add the values to `wrangler.jsonc`:
 {
   "vars": {
     "AUTH_MODE": "access",
-    "ADMIN_EMAIL": "your-email@example.com",
+    "ADMIN_EMAILS": "first-parent@example.com,second-parent@example.com",
     "CF_ACCESS_TEAM_DOMAIN": "https://your-team.cloudflareaccess.com",
     "CF_ACCESS_AUD": "your-access-application-aud"
   }
@@ -190,17 +190,17 @@ Do not trust `Cf-Access-Authenticated-User-Email` by itself, and do not remove J
 
 ## Administrator
 
-`ADMIN_EMAIL` identifies the only administrator:
+`ADMIN_EMAILS` contains a comma-separated administrator allowlist:
 
 ```jsonc
 {
   "vars": {
-    "ADMIN_EMAIL": "your-email@example.com"
+    "ADMIN_EMAILS": "first-parent@example.com,second-parent@example.com"
   }
 }
 ```
 
-The comparison is case-insensitive and uses only the current user's JWT-verified email. Administrator status is never stored in D1, so database content cannot grant privileges. Change the administrator by updating configuration and redeploying.
+Comparisons are case-insensitive, surrounding whitespace is ignored, and authorization uses only the current user's JWT-verified email. Administrator status is never stored in D1, so database content cannot grant privileges. Change the allowlist by updating configuration and redeploying. The legacy `ADMIN_EMAIL` variable remains a fallback for existing deployments when `ADMIN_EMAILS` is absent.
 
 The administrator page is available at:
 
@@ -264,8 +264,8 @@ At minimum, update:
 2. The Worker name in `wrangler.jsonc`.
 3. The D1 database name and ID.
 4. The Access team domain and AUD.
-5. The production `ADMIN_EMAIL`.
-6. The local development user and administrator email in `.dev.vars`.
+5. The production `ADMIN_EMAILS` allowlist.
+6. The local development user and administrator allowlist in `.dev.vars`.
 7. The page name, colors, and application-specific fields.
 
 Keep `migrations/0001_create_users.sql` and the identity module, then add tables and `/api/*` routes for the family application.

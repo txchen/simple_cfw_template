@@ -34,7 +34,7 @@ export function createAdminUsersModule(): AdminUsersModule {
         timezone: row.timezone,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
-        isAdmin: hasAdminRole(row.email, env.ADMIN_EMAIL),
+        isAdmin: hasAdminRole(row.email, env),
       }));
     },
   };

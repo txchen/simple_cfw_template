@@ -3,7 +3,8 @@ export interface Bindings {
   ASSETS: Fetcher;
   CF_ACCESS_TEAM_DOMAIN: string;
   CF_ACCESS_AUD: string;
-  ADMIN_EMAIL: string;
+  ADMIN_EMAILS?: string;
+  ADMIN_EMAIL?: string;
   AUTH_MODE: "access" | "local";
   LOCAL_DEV_USER_EMAIL?: string;
 }
