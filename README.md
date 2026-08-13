@@ -58,13 +58,21 @@ flowchart LR
 
 ## Local development
 
-Requires Node.js 20.19+ and a Cloudflare account.
+Requires [Vite+](https://viteplus.dev/) and a Cloudflare account. Vite+ manages the supported Node.js and npm versions declared by the project.
+
+Install the `vp` CLI on macOS or Linux, then open a new terminal:
 
 ```bash
-npm install
+curl -fsSL https://vite.plus | bash
+```
+
+Install dependencies and start the application:
+
+```bash
+vp install
 cp .dev.vars.example .dev.vars
-npm run db:migrate:local
-npm run dev
+vp run db:migrate:local
+vp dev
 ```
 
 Open the localhost URL printed by Vite. The default local user is:
@@ -87,7 +95,7 @@ Wrangler persists local D1 state under `.wrangler/`. To rebuild local data, remo
 ### 1. Log in to Wrangler
 
 ```bash
-npx wrangler login
+vp exec wrangler login
 ```
 
 ### 2. Create a D1 database
@@ -95,7 +103,7 @@ npx wrangler login
 Rename the Worker and database after copying this starter, then create the database:
 
 ```bash
-npx wrangler d1 create your-app-db
+vp exec wrangler d1 create your-app-db
 ```
 
 Copy the returned database ID into `wrangler.jsonc`:
@@ -108,16 +116,16 @@ Copy the returned database ID into `wrangler.jsonc`:
       "binding": "DB",
       "database_name": "your-app-db",
       "database_id": "your-real-database-id",
-      "migrations_dir": "migrations"
-    }
-  ]
+      "migrations_dir": "migrations",
+    },
+  ],
 }
 ```
 
 Apply the migration:
 
 ```bash
-npm run db:migrate:remote
+vp run db:migrate:remote
 ```
 
 ### 3. Create a Cloudflare Access application
@@ -137,8 +145,8 @@ Add the values to `wrangler.jsonc`:
     "AUTH_MODE": "access",
     "ADMIN_EMAILS": "first-parent@example.com,second-parent@example.com",
     "CF_ACCESS_TEAM_DOMAIN": "https://your-team.cloudflareaccess.com",
-    "CF_ACCESS_AUD": "your-access-application-aud"
-  }
+    "CF_ACCESS_AUD": "your-access-application-aud",
+  },
 }
 ```
 
@@ -155,9 +163,9 @@ The recommended configuration lives in `wrangler.jsonc`:
   "routes": [
     {
       "pattern": "family.example.com",
-      "custom_domain": true
-    }
-  ]
+      "custom_domain": true,
+    },
+  ],
 }
 ```
 
@@ -168,7 +176,7 @@ Access should protect the entire website, not only `/api/*`, so HTML, JavaScript
 ### 5. Deploy
 
 ```bash
-npm run deploy
+vp run deploy
 ```
 
 The deploy script runs type checking, integration tests, and a production build before invoking Wrangler.
@@ -195,8 +203,8 @@ Do not trust `Cf-Access-Authenticated-User-Email` by itself, and do not remove J
 ```jsonc
 {
   "vars": {
-    "ADMIN_EMAILS": "first-parent@example.com,second-parent@example.com"
-  }
+    "ADMIN_EMAILS": "first-parent@example.com,second-parent@example.com",
+  },
 }
 ```
 
@@ -222,12 +230,12 @@ Cloudflare clears the Access cookie. Access currently logs the user out of the e
 
 ## Backend API
 
-| Method | Path | Description |
-| --- | --- | --- |
-| `GET` | `/api/health` | Report Worker health |
-| `GET` | `/api/me` | Verify identity and return or create the current user |
-| `PATCH` | `/api/me/profile` | Update the current user's profile |
-| `GET` | `/api/admin/users` | List all users for the administrator |
+| Method  | Path               | Description                                           |
+| ------- | ------------------ | ----------------------------------------------------- |
+| `GET`   | `/api/health`      | Report Worker health                                  |
+| `GET`   | `/api/me`          | Verify identity and return or create the current user |
+| `PATCH` | `/api/me/profile`  | Update the current user's profile                     |
+| `GET`   | `/api/admin/users` | List all users for the administrator                  |
 
 Profile request:
 
@@ -245,16 +253,18 @@ The runtime schema lives in `shared/profile.ts`, and the `ProfileUpdate` TypeScr
 
 ## Commands
 
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Start Vite in the Workers runtime |
-| `npm run db:migrate:local` | Apply migrations to local D1 |
-| `npm run db:migrate:remote` | Apply migrations to remote D1 |
-| `npm run typecheck` | Check Vue, Worker, and build configuration types |
-| `npm run test:run` | Run the Workers integration tests once |
-| `npm run build` | Build the Worker and Vue assets |
-| `npm run check` | Run type checking, tests, and production build |
-| `npm run deploy` | Validate and deploy to Cloudflare |
+| Command                    | Purpose                                                               |
+| -------------------------- | --------------------------------------------------------------------- |
+| `vp install`               | Install dependencies with the project's pinned package manager        |
+| `vp dev`                   | Start Vite in the Workers runtime                                     |
+| `vp check`                 | Check formatting and lint rules                                       |
+| `vp run typecheck`         | Check Vue, Worker, and build configuration types                      |
+| `vp test`                  | Run the Workers integration tests once                                |
+| `vp build`                 | Build the Worker and Vue assets                                       |
+| `vp run check`             | Run formatting, linting, type checking, tests, and a production build |
+| `vp run db:migrate:local`  | Apply migrations to local D1                                          |
+| `vp run db:migrate:remote` | Apply migrations to remote D1                                         |
+| `vp run deploy`            | Validate and deploy to Cloudflare                                     |
 
 ## Copying this starter
 

@@ -1,9 +1,4 @@
-import type {
-  AdminUserSummary,
-  ApiErrorBody,
-  AppUser,
-  ProfileUpdate,
-} from "../shared/contracts";
+import type { AdminUserSummary, ApiErrorBody, AppUser, ProfileUpdate } from "../shared/contracts";
 
 export class ApiError extends Error {
   constructor(
@@ -24,9 +19,7 @@ export async function getCurrentUser(): Promise<AppUser> {
   return readUserResponse(response);
 }
 
-export async function updateProfile(
-  profile: ProfileUpdate,
-): Promise<AppUser> {
+export async function updateProfile(profile: ProfileUpdate): Promise<AppUser> {
   const response = await fetch("/api/me/profile", {
     method: "PATCH",
     credentials: "same-origin",
@@ -44,9 +37,7 @@ export async function getAdminUsers(): Promise<AdminUserSummary[]> {
     credentials: "same-origin",
     headers: { Accept: "application/json" },
   });
-  const body = (await response.json()) as
-    | { users: AdminUserSummary[] }
-    | ApiErrorBody;
+  const body = (await response.json()) as { users: AdminUserSummary[] } | ApiErrorBody;
 
   if (!response.ok || !("users" in body)) {
     throw toApiError(body);
@@ -55,9 +46,7 @@ export async function getAdminUsers(): Promise<AdminUserSummary[]> {
 }
 
 async function readUserResponse(response: Response): Promise<AppUser> {
-  const body = (await response.json()) as
-    | { user: AppUser }
-    | ApiErrorBody;
+  const body = (await response.json()) as { user: AppUser } | ApiErrorBody;
 
   if (!response.ok || !("user" in body)) {
     throw toApiError(body);

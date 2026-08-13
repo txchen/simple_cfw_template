@@ -54,8 +54,7 @@ async function load() {
     user.value = currentUser;
     fillForm(currentUser);
   } catch (error) {
-    loadError.value =
-      error instanceof Error ? error.message : "Unable to load the current user.";
+    loadError.value = error instanceof Error ? error.message : "Unable to load the current user.";
   } finally {
     loading.value = false;
   }
@@ -136,9 +135,7 @@ onMounted(load);
         <span class="state-icon" aria-hidden="true">!</span>
         <h1>Unable to open your profile</h1>
         <p>{{ loadError }}</p>
-        <button class="button primary" type="button" @click="load">
-          Try again
-        </button>
+        <button class="button primary" type="button" @click="load">Try again</button>
       </section>
 
       <template v-else-if="user && isAdminPage">
@@ -146,8 +143,8 @@ onMounted(load);
           <p class="eyebrow">ADMIN ONLY</p>
           <h1>User management</h1>
           <p class="hero-copy">
-            This page lists everyone who has visited the app and received a D1 user record.
-            Admin access comes from server configuration and is not stored in user profiles.
+            This page lists everyone who has visited the app and received a D1 user record. Admin
+            access comes from server configuration and is not stored in user profiles.
           </p>
         </section>
 
@@ -169,8 +166,8 @@ onMounted(load);
             <span>{{ user.displayName || user.email.split("@")[0] }}</span>
           </h1>
           <p class="hero-copy">
-            Cloudflare Access has verified your identity. This profile belongs to the app
-            and does not modify your login account.
+            Cloudflare Access has verified your identity. This profile belongs to the app and does
+            not modify your login account.
           </p>
         </section>
 
@@ -286,11 +283,7 @@ onMounted(load);
               </div>
 
               <div class="form-footer">
-                <p
-                  v-if="successMessage"
-                  class="form-message success"
-                  role="status"
-                >
+                <p v-if="successMessage" class="form-message success" role="status">
                   {{ successMessage }}
                 </p>
                 <p v-else-if="formError" class="form-message error" role="alert">
@@ -298,11 +291,7 @@ onMounted(load);
                 </p>
                 <span v-else></span>
 
-                <button
-                  class="button primary"
-                  type="submit"
-                  :disabled="saving"
-                >
+                <button class="button primary" type="submit" :disabled="saving">
                   <span v-if="saving" class="button-spinner" aria-hidden="true"></span>
                   {{ saving ? "Saving…" : "Save profile" }}
                 </button>
@@ -313,8 +302,6 @@ onMounted(load);
       </template>
     </main>
 
-    <footer>
-      Cloudflare Workers | Access | D1
-    </footer>
+    <footer>Cloudflare Workers | Access | D1</footer>
   </div>
 </template>

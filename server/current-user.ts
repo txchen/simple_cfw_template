@@ -1,14 +1,5 @@
-import {
-  createRemoteJWKSet,
-  errors as joseErrors,
-  jwtVerify,
-  type JWTPayload,
-} from "jose";
-import type {
-  AppUser,
-  AuthProvider,
-  ProfileUpdate,
-} from "../shared/contracts";
+import { createRemoteJWKSet, errors as joseErrors, jwtVerify, type JWTPayload } from "jose";
+import type { AppUser, AuthProvider, ProfileUpdate } from "../shared/contracts";
 import type { Bindings } from "./env";
 import { HttpError } from "./errors";
 import { hasAdminRole } from "./admin-role";
@@ -30,10 +21,7 @@ interface UserRow {
   updated_at: string;
 }
 
-type AccessJwtVerifier = (
-  token: string,
-  env: Bindings,
-) => Promise<VerifiedIdentity>;
+type AccessJwtVerifier = (token: string, env: Bindings) => Promise<VerifiedIdentity>;
 
 export interface CurrentUserModule {
   resolve(request: Request, env: Bindings): Promise<AppUser>;
@@ -45,10 +33,7 @@ export interface CurrentUserModule {
   ): Promise<AppUser>;
 }
 
-const remoteJwksByUrl = new Map<
-  string,
-  ReturnType<typeof createRemoteJWKSet>
->();
+const remoteJwksByUrl = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 
 export function createCurrentUserModule(
   verifyAccessJwt: AccessJwtVerifier = verifyCloudflareAccessJwt,
@@ -72,13 +57,7 @@ export function createCurrentUserModule(
          SET display_name = ?, avatar_url = ?, timezone = ?, updated_at = ?
          WHERE id = ?`,
       )
-        .bind(
-          profile.displayName,
-          profile.avatarUrl,
-          profile.timezone,
-          updatedAt,
-          userId,
-        )
+        .bind(profile.displayName, profile.avatarUrl, profile.timezone, updatedAt, userId)
         .run();
 
       if (result.meta.changes !== 1) {
@@ -108,19 +87,12 @@ async function getAccessIdentity(
   return verifyAccessJwt(token, env);
 }
 
-async function verifyCloudflareAccessJwt(
-  token: string,
-  env: Bindings,
-): Promise<VerifiedIdentity> {
+async function verifyCloudflareAccessJwt(token: string, env: Bindings): Promise<VerifiedIdentity> {
   const teamDomain = normalizeTeamDomain(env.CF_ACCESS_TEAM_DOMAIN);
   const audience = env.CF_ACCESS_AUD?.trim();
 
   if (!audience || audience.startsWith("replace-with-")) {
-    throw new HttpError(
-      500,
-      "access_not_configured",
-      "Cloudflare Access is not configured.",
-    );
+    throw new HttpError(500, "access_not_configured", "Cloudflare Access is not configured.");
   }
 
   const certsUrl = new URL("/cdn-cgi/access/certs", teamDomain).toString();
@@ -169,10 +141,7 @@ async function verifyCloudflareAccessJwt(
   };
 }
 
-function getLocalIdentity(
-  request: Request,
-  env: Bindings,
-): VerifiedIdentity {
+function getLocalIdentity(request: Request, env: Bindings): VerifiedIdentity {
   if (!isLocalRequest(request)) {
     throw new HttpError(
       401,
@@ -200,20 +169,12 @@ function getLocalIdentity(
 
 function isLocalRequest(request: Request): boolean {
   const hostname = new URL(request.url).hostname;
-  return (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname === "::1"
-  );
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
 }
 
 function normalizeTeamDomain(value: string | undefined): string {
   if (!value) {
-    throw new HttpError(
-      500,
-      "access_not_configured",
-      "Cloudflare Access is not configured.",
-    );
+    throw new HttpError(500, "access_not_configured", "Cloudflare Access is not configured.");
   }
 
   let url: URL;
@@ -227,10 +188,7 @@ function normalizeTeamDomain(value: string | undefined): string {
     );
   }
 
-  if (
-    url.protocol !== "https:" ||
-    !url.hostname.endsWith(".cloudflareaccess.com")
-  ) {
+  if (url.protocol !== "https:" || !url.hostname.endsWith(".cloudflareaccess.com")) {
     throw new HttpError(
       500,
       "access_not_configured",
@@ -253,10 +211,7 @@ function normalizeEmail(email: string): string {
   return normalized;
 }
 
-async function findOrCreateUser(
-  identity: VerifiedIdentity,
-  db: D1Database,
-): Promise<UserRow> {
+async function findOrCreateUser(identity: VerifiedIdentity, db: D1Database): Promise<UserRow> {
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
 
@@ -289,14 +244,8 @@ async function findOrCreateUser(
   return row;
 }
 
-async function findUserById(
-  userId: string,
-  db: D1Database,
-): Promise<UserRow> {
-  const row = await db
-    .prepare("SELECT * FROM users WHERE id = ?")
-    .bind(userId)
-    .first<UserRow>();
+async function findUserById(userId: string, db: D1Database): Promise<UserRow> {
+  const row = await db.prepare("SELECT * FROM users WHERE id = ?").bind(userId).first<UserRow>();
 
   if (!row) {
     throw new HttpError(404, "user_not_found", "User not found.");
@@ -304,11 +253,7 @@ async function findUserById(
   return row;
 }
 
-function toAppUser(
-  row: UserRow,
-  authProvider: AuthProvider,
-  env: Bindings,
-): AppUser {
+function toAppUser(row: UserRow, authProvider: AuthProvider, env: Bindings): AppUser {
   return {
     id: row.id,
     email: row.email,

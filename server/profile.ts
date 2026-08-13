@@ -6,9 +6,7 @@ type ValidationIssue = {
   path?: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }>;
 };
 
-export function profileValidationError(
-  issues: readonly ValidationIssue[],
-): HttpError {
+export function profileValidationError(issues: readonly ValidationIssue[]): HttpError {
   const fields: Partial<Record<keyof ProfileUpdate, string>> = {};
 
   for (const issue of issues) {
@@ -19,27 +17,15 @@ export function profileValidationError(
   }
 
   if (Object.keys(fields).length === 0) {
-    return new HttpError(
-      422,
-      "invalid_profile",
-      issues[0]?.message ?? "The profile is invalid.",
-    );
+    return new HttpError(422, "invalid_profile", issues[0]?.message ?? "The profile is invalid.");
   }
 
-  return new HttpError(
-    422,
-    "invalid_profile",
-    "Please correct the highlighted fields.",
-    fields,
-  );
+  return new HttpError(422, "invalid_profile", "Please correct the highlighted fields.", fields);
 }
 
 function getIssueField(issue: ValidationIssue): keyof ProfileUpdate | null {
   const segment = issue.path?.[0];
-  const key =
-    typeof segment === "object" && segment !== null ? segment.key : segment;
+  const key = typeof segment === "object" && segment !== null ? segment.key : segment;
 
-  return key === "displayName" || key === "avatarUrl" || key === "timezone"
-    ? key
-    : null;
+  return key === "displayName" || key === "avatarUrl" || key === "timezone" ? key : null;
 }

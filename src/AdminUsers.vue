@@ -7,9 +7,7 @@ const users = ref<AdminUserSummary[]>([]);
 const loading = ref(true);
 const errorMessage = ref("");
 
-const profileCount = computed(
-  () => users.value.filter((user) => user.displayName).length,
-);
+const profileCount = computed(() => users.value.filter((user) => user.displayName).length);
 
 function initials(user: AdminUserSummary) {
   const source = user.displayName || user.email;
@@ -35,8 +33,7 @@ async function loadUsers() {
   try {
     users.value = await getAdminUsers();
   } catch (error) {
-    errorMessage.value =
-      error instanceof Error ? error.message : "Unable to load the user list.";
+    errorMessage.value = error instanceof Error ? error.message : "Unable to load the user list.";
   } finally {
     loading.value = false;
   }
@@ -54,8 +51,12 @@ onMounted(loadUsers);
       </div>
 
       <div v-if="!loading && !errorMessage" class="user-stats">
-        <span><strong>{{ users.length }}</strong> users</span>
-        <span><strong>{{ profileCount }}</strong> profiles</span>
+        <span
+          ><strong>{{ users.length }}</strong> users</span
+        >
+        <span
+          ><strong>{{ profileCount }}</strong> profiles</span
+        >
       </div>
     </div>
 
@@ -67,9 +68,7 @@ onMounted(loadUsers);
     <div v-else-if="errorMessage" class="inline-state error-state">
       <span class="state-icon" aria-hidden="true">!</span>
       <p>{{ errorMessage }}</p>
-      <button class="button primary" type="button" @click="loadUsers">
-        Try again
-      </button>
+      <button class="button primary" type="button" @click="loadUsers">Try again</button>
     </div>
 
     <div v-else-if="users.length === 0" class="inline-state">

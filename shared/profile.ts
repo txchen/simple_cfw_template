@@ -8,8 +8,7 @@ const optionalProfileString = () =>
 
 export const profileUpdateSchema = v.pipe(
   v.custom<Record<string, unknown>>(
-    (value) =>
-      typeof value === "object" && value !== null && !Array.isArray(value),
+    (value) => typeof value === "object" && value !== null && !Array.isArray(value),
     "The profile must be a JSON object.",
   ),
   v.object({
@@ -34,8 +33,7 @@ export const profileUpdateSchema = v.pipe(
     timezone: v.pipe(
       optionalProfileString(),
       v.check(
-        (value) =>
-          value === null || (value.length <= 100 && isTimezone(value)),
+        (value) => value === null || (value.length <= 100 && isTimezone(value)),
         "Use a valid IANA timezone such as America/Los_Angeles.",
       ),
     ),

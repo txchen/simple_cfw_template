@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 import { createApp } from "../server/app";
 import type { Bindings } from "../server/env";
 
@@ -11,11 +11,7 @@ beforeEach(async () => {
 
 describe("family starter worker", () => {
   it("reports health without touching D1", async () => {
-    const response = await app.request(
-      "http://localhost/api/health",
-      {},
-      env,
-    );
+    const response = await app.request("http://localhost/api/health", {}, env);
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({ status: "ok" });
   });
@@ -41,9 +37,9 @@ describe("family starter worker", () => {
     });
     expect(secondBody.user.id).toBe(firstBody.user.id);
 
-    const count = await env.DB.prepare(
-      "SELECT COUNT(*) AS count FROM users",
-    ).first<{ count: number }>();
+    const count = await env.DB.prepare("SELECT COUNT(*) AS count FROM users").first<{
+      count: number;
+    }>();
     expect(count?.count).toBe(1);
   });
 
@@ -101,11 +97,7 @@ describe("family starter worker", () => {
       error: { code: string; fields: Record<string, string> };
     }>();
     expect(body.error.code).toBe("invalid_profile");
-    expect(Object.keys(body.error.fields)).toEqual([
-      "displayName",
-      "avatarUrl",
-      "timezone",
-    ]);
+    expect(Object.keys(body.error.fields)).toEqual(["displayName", "avatarUrl", "timezone"]);
   });
 
   it("keeps malformed JSON distinct from schema validation errors", async () => {
@@ -175,11 +167,7 @@ describe("family starter worker", () => {
   });
 
   it("never uses the local identity on a public hostname", async () => {
-    const response = await app.request(
-      "https://family.example.com/api/me",
-      {},
-      env,
-    );
+    const response = await app.request("https://family.example.com/api/me", {}, env);
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toMatchObject({
@@ -193,11 +181,7 @@ describe("family starter worker", () => {
       AUTH_MODE: "access",
     };
 
-    const response = await app.request(
-      "http://localhost/api/me",
-      {},
-      accessEnv,
-    );
+    const response = await app.request("http://localhost/api/me", {}, accessEnv);
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toMatchObject({
@@ -206,8 +190,7 @@ describe("family starter worker", () => {
   });
 
   it("lets every configured admin manage users", async () => {
-    const adminEmails =
-      " developer@example.com, SECOND-PARENT@example.com, developer@example.com ";
+    const adminEmails = " developer@example.com, SECOND-PARENT@example.com, developer@example.com ";
     const familyEnv: Bindings = {
       ...env,
       LOCAL_DEV_USER_EMAIL: "family@example.com",
@@ -227,11 +210,7 @@ describe("family starter worker", () => {
     await app.request("http://localhost/api/me", {}, firstAdminEnv);
     await app.request("http://localhost/api/me", {}, secondAdminEnv);
 
-    const response = await app.request(
-      "http://localhost/api/admin/users",
-      {},
-      secondAdminEnv,
-    );
+    const response = await app.request("http://localhost/api/admin/users", {}, secondAdminEnv);
 
     expect(response.status).toBe(200);
     const body = await response.json<{
@@ -263,11 +242,7 @@ describe("family starter worker", () => {
       ADMIN_EMAIL: "developer@example.com",
     };
 
-    const response = await app.request(
-      "http://localhost/api/admin/users",
-      {},
-      legacyEnv,
-    );
+    const response = await app.request("http://localhost/api/admin/users", {}, legacyEnv);
 
     expect(response.status).toBe(200);
   });
@@ -278,22 +253,14 @@ describe("family starter worker", () => {
       LOCAL_DEV_USER_EMAIL: "family@example.com",
     };
 
-    const response = await app.request(
-      "http://localhost/api/admin/users",
-      {},
-      familyEnv,
-    );
+    const response = await app.request("http://localhost/api/admin/users", {}, familyEnv);
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toMatchObject({
       error: { code: "admin_required" },
     });
 
-    const pageResponse = await app.request(
-      "http://localhost/admin",
-      {},
-      familyEnv,
-    );
+    const pageResponse = await app.request("http://localhost/admin", {}, familyEnv);
     expect(pageResponse.status).toBe(403);
   });
 });

@@ -3,10 +3,7 @@ export interface AdminRoleConfig {
   ADMIN_EMAIL?: string;
 }
 
-export function hasAdminRole(
-  userEmail: string,
-  config: AdminRoleConfig,
-): boolean {
+export function hasAdminRole(userEmail: string, config: AdminRoleConfig): boolean {
   const configuredEmails = config.ADMIN_EMAILS?.trim() || config.ADMIN_EMAIL;
   if (!configuredEmails) return false;
 
