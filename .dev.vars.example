@@ -1,6 +1,8 @@
 # Local authentication is enabled only when both conditions are true:
 # 1. AUTH_MODE is "local"
-# 2. The request hostname is localhost, 127.0.0.1, or ::1
+# 2. The request uses a loopback hostname or one explicitly listed below
 AUTH_MODE=local
 LOCAL_DEV_USER_EMAIL=developer@example.com
+# Optional comma-separated hostnames or IP addresses for trusted development devices.
+# LOCAL_DEV_ALLOWED_HOSTS=100.100.104.42,vibe97
 ADMIN_EMAILS=developer@example.com,second-parent@example.com

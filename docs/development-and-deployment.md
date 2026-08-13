@@ -37,6 +37,8 @@ The local authentication settings should include:
 AUTH_MODE=local
 LOCAL_DEV_USER_EMAIL=developer@example.com
 ADMIN_EMAILS=developer@example.com
+# Optional: explicitly trust additional development hostnames or IP addresses.
+# LOCAL_DEV_ALLOWED_HOSTS=100.100.104.42,vibe97
 ```
 
 Apply all migrations to the local D1 database:
@@ -51,7 +53,7 @@ Start the application:
 vp dev
 ```
 
-Open the URL printed by Vite+, normally `http://localhost:5173`. Local identity is accepted only on `localhost`, `127.0.0.1`, or `::1`; it deliberately does not work on arbitrary LAN hostnames.
+Open the URL printed by Vite+, normally `http://localhost:5173`. Local identity is accepted on `localhost`, `127.0.0.1`, or `::1`. To connect from a trusted development device, add its exact hostname or IP address to the comma-separated `LOCAL_DEV_ALLOWED_HOSTS` variable in `.dev.vars`. Do not allow broad networks or public hostnames: every listed host receives the configured local identity without Cloudflare Access authentication.
 
 ## Local database behavior
 

@@ -86,7 +86,9 @@ developer@example.com
 This user is also a default local administrator. Override `LOCAL_DEV_USER_EMAIL` and the comma-separated `ADMIN_EMAILS` list in the untracked `.dev.vars` file as needed. Local identity requires both conditions:
 
 - `AUTH_MODE` is `local` in `.dev.vars`.
-- The request hostname is `localhost`, `127.0.0.1`, or `::1`.
+- The request uses `localhost`, `127.0.0.1`, `::1`, or a hostname explicitly listed in the comma-separated `LOCAL_DEV_ALLOWED_HOSTS` variable.
+
+Only add trusted development addresses to `LOCAL_DEV_ALLOWED_HOSTS`; every allowed host receives the configured local identity without Cloudflare Access authentication.
 
 Production configuration always uses `AUTH_MODE=access` and contains no local user email. A production request must carry a valid Access JWT even if its internal request URL uses a localhost hostname.
 
@@ -289,7 +291,7 @@ Keep `migrations/0001_create_users.sql` and the identity module, then add tables
 - D1 queries use only the verified current user ID.
 - Administrator status comes only from configuration and verified email.
 - Both `/admin` and `/api/admin/*` enforce server-side authorization.
-- Local identity requires explicit `AUTH_MODE=local` and a loopback hostname.
+- Local identity requires explicit `AUTH_MODE=local` and a loopback or explicitly allowed development hostname.
 - Production disables `workers.dev` and preview URLs.
 - Profile updates use an allowlist of fields rather than arbitrary database keys.
 - Cloudflare manages the Access cookie; Vue never reads or stores the token.

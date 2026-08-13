@@ -142,11 +142,11 @@ async function verifyCloudflareAccessJwt(token: string, env: Bindings): Promise<
 }
 
 function getLocalIdentity(request: Request, env: Bindings): VerifiedIdentity {
-  if (!isLocalRequest(request)) {
+  if (!isLocalRequest(request, env)) {
     throw new HttpError(
       401,
       "local_auth_forbidden",
-      "Local authentication is available only on a loopback hostname.",
+      "Local authentication is available only on a loopback or explicitly allowed hostname.",
     );
   }
 
@@ -167,9 +167,15 @@ function getLocalIdentity(request: Request, env: Bindings): VerifiedIdentity {
   };
 }
 
-function isLocalRequest(request: Request): boolean {
-  const hostname = new URL(request.url).hostname;
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+function isLocalRequest(request: Request, env: Bindings): boolean {
+  const hostname = new URL(request.url).hostname.toLowerCase();
+  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") {
+    return true;
+  }
+
+  return (env.LOCAL_DEV_ALLOWED_HOSTS ?? "")
+    .split(",")
+    .some((allowedHostname) => allowedHostname.trim().toLowerCase() === hostname);
 }
 
 function normalizeTeamDomain(value: string | undefined): string {

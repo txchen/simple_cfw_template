@@ -166,7 +166,23 @@ describe("family starter worker", () => {
     });
   });
 
-  it("never uses the local identity on a public hostname", async () => {
+  it("uses the local identity on explicitly allowed development hostnames", async () => {
+    const allowedEnv: Bindings = {
+      ...env,
+      LOCAL_DEV_ALLOWED_HOSTS: " 100.100.104.42, VIBE97 ",
+    };
+
+    for (const hostname of ["100.100.104.42", "vibe97"]) {
+      const response = await app.request(`http://${hostname}/api/me`, {}, allowedEnv);
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({
+        user: { email: "developer@example.com", authProvider: "local-dev" },
+      });
+    }
+  });
+
+  it("never uses the local identity on an unlisted public hostname", async () => {
     const response = await app.request("https://family.example.com/api/me", {}, env);
 
     expect(response.status).toBe(401);
