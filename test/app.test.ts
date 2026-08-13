@@ -191,7 +191,25 @@ describe("family starter worker", () => {
     });
   });
 
-  it("requires Access in production even on a localhost URL", async () => {
+  it("uses the email header injected by Access in production", async () => {
+    const accessEnv: Bindings = {
+      ...env,
+      AUTH_MODE: "access",
+    };
+
+    const response = await app.request(
+      "https://family.example.com/api/me",
+      { headers: { "Cf-Access-Authenticated-User-Email": " Family@Example.com " } },
+      accessEnv,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      user: { email: "family@example.com", authProvider: "cloudflare-access" },
+    });
+  });
+
+  it("requires the Access email header in production even on a localhost URL", async () => {
     const accessEnv: Bindings = {
       ...env,
       AUTH_MODE: "access",

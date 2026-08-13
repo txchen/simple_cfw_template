@@ -1,4 +1,3 @@
-import { createRemoteJWKSet, errors as joseErrors, jwtVerify, type JWTPayload } from "jose";
 import type { AppUser, AuthProvider, ProfileUpdate } from "../shared/contracts";
 import type { Bindings } from "./env";
 import { HttpError } from "./errors";
@@ -21,8 +20,6 @@ interface UserRow {
   updated_at: string;
 }
 
-type AccessJwtVerifier = (token: string, env: Bindings) => Promise<VerifiedIdentity>;
-
 export interface CurrentUserModule {
   resolve(request: Request, env: Bindings): Promise<AppUser>;
   updateProfile(
@@ -33,17 +30,11 @@ export interface CurrentUserModule {
   ): Promise<AppUser>;
 }
 
-const remoteJwksByUrl = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
-
-export function createCurrentUserModule(
-  verifyAccessJwt: AccessJwtVerifier = verifyCloudflareAccessJwt,
-): CurrentUserModule {
+export function createCurrentUserModule(): CurrentUserModule {
   return {
     async resolve(request, env) {
       const identity =
-        env.AUTH_MODE === "local"
-          ? getLocalIdentity(request, env)
-          : await getAccessIdentity(request, env, verifyAccessJwt);
+        env.AUTH_MODE === "local" ? getLocalIdentity(request, env) : getAccessIdentity(request);
 
       const row = await findOrCreateUser(identity, env.DB);
       return toAppUser(row, identity.authProvider, env);
@@ -70,13 +61,9 @@ export function createCurrentUserModule(
   };
 }
 
-async function getAccessIdentity(
-  request: Request,
-  env: Bindings,
-  verifyAccessJwt: AccessJwtVerifier,
-): Promise<VerifiedIdentity> {
-  const token = request.headers.get("Cf-Access-Jwt-Assertion");
-  if (!token) {
+function getAccessIdentity(request: Request): VerifiedIdentity {
+  const emailHeader = request.headers.get("Cf-Access-Authenticated-User-Email");
+  if (!emailHeader) {
     throw new HttpError(
       401,
       "authentication_required",
@@ -84,59 +71,10 @@ async function getAccessIdentity(
     );
   }
 
-  return verifyAccessJwt(token, env);
-}
-
-async function verifyCloudflareAccessJwt(token: string, env: Bindings): Promise<VerifiedIdentity> {
-  const teamDomain = normalizeTeamDomain(env.CF_ACCESS_TEAM_DOMAIN);
-  const audience = env.CF_ACCESS_AUD?.trim();
-
-  if (!audience || audience.startsWith("replace-with-")) {
-    throw new HttpError(500, "access_not_configured", "Cloudflare Access is not configured.");
-  }
-
-  const certsUrl = new URL("/cdn-cgi/access/certs", teamDomain).toString();
-  let jwks = remoteJwksByUrl.get(certsUrl);
-  if (!jwks) {
-    jwks = createRemoteJWKSet(new URL(certsUrl));
-    remoteJwksByUrl.set(certsUrl, jwks);
-  }
-
-  let payload: JWTPayload;
-  try {
-    ({ payload } = await jwtVerify(token, jwks, {
-      algorithms: ["RS256"],
-      audience,
-      issuer: teamDomain,
-    }));
-  } catch (error) {
-    if (error instanceof joseErrors.JOSEError) {
-      throw new HttpError(
-        401,
-        "invalid_access_token",
-        "The Cloudflare Access session is invalid or expired.",
-      );
-    }
-    throw error;
-  }
-
-  if (
-    payload.type !== "app" ||
-    typeof payload.sub !== "string" ||
-    !payload.sub ||
-    typeof payload.email !== "string" ||
-    !payload.email
-  ) {
-    throw new HttpError(
-      401,
-      "invalid_access_identity",
-      "Cloudflare Access did not provide a user identity.",
-    );
-  }
-
+  const email = normalizeEmail(emailHeader);
   return {
-    subject: payload.sub,
-    email: normalizeEmail(payload.email),
+    subject: `access-email:${email}`,
+    email,
     authProvider: "cloudflare-access",
   };
 }
@@ -176,33 +114,6 @@ function isLocalRequest(request: Request, env: Bindings): boolean {
   return (env.LOCAL_DEV_ALLOWED_HOSTS ?? "")
     .split(",")
     .some((allowedHostname) => allowedHostname.trim().toLowerCase() === hostname);
-}
-
-function normalizeTeamDomain(value: string | undefined): string {
-  if (!value) {
-    throw new HttpError(500, "access_not_configured", "Cloudflare Access is not configured.");
-  }
-
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    throw new HttpError(
-      500,
-      "access_not_configured",
-      "CF_ACCESS_TEAM_DOMAIN must be a valid HTTPS URL.",
-    );
-  }
-
-  if (url.protocol !== "https:" || !url.hostname.endsWith(".cloudflareaccess.com")) {
-    throw new HttpError(
-      500,
-      "access_not_configured",
-      "CF_ACCESS_TEAM_DOMAIN must be a Cloudflare Access team URL.",
-    );
-  }
-
-  return url.origin;
 }
 
 function normalizeEmail(email: string): string {

@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "simple-cfw-template",
+  "name": "cfwtemplate",
+  "account_id": "37534748af0ad176a603fd03acf642aa",
   "main": "./server/index.ts",
   "compatibility_date": "2026-07-25",
   "workers_dev": false,
@@ -12,15 +13,13 @@
   },
   "vars": {
     "AUTH_MODE": "access",
-    "ADMIN_EMAILS": "first-parent@example.com,second-parent@example.com",
-    "CF_ACCESS_TEAM_DOMAIN": "https://your-team.cloudflareaccess.com",
-    "CF_ACCESS_AUD": "replace-with-your-access-application-aud",
+    "ADMIN_EMAILS": "curlfw@gmail.com,tanya.chen.youyou@gmail.com",
   },
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "simple-cfw-template-db",
-      "database_id": "replace-with-your-d1-database-id",
+      "database_name": "cfwtemplate-db",
+      "database_id": "dfab90bf-970f-42f8-a4d2-7d53e9aa710f",
       "migrations_dir": "migrations",
     },
   ],

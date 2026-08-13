@@ -10,12 +10,12 @@ A full-stack Cloudflare starter for private family websites:
 - **Vue 3 + Vite** provide the responsive frontend.
 - Frontend and backend share one domain, so no separate CORS setup is needed.
 
-The application stores no passwords and creates no second login session. After Cloudflare Access verifies a visitor, the Worker validates the Access JWT and finds or creates a D1 user by verified email address.
+The application stores no passwords and creates no second login session. Cloudflare Access verifies each visitor and injects their email into the request; the Worker trusts that Access-protected boundary and finds or creates a D1 user by normalized email address.
 
 ```mermaid
 flowchart LR
     Browser["Family browser"] --> Access["Cloudflare Access<br/>Login and allowlist"]
-    Access --> Worker["Hono Worker<br/>Access JWT verification"]
+    Access --> Worker["Hono Worker<br/>Injected email header"]
     Worker --> D1["D1<br/>Users and profiles"]
     Worker --> Vue["Vue SPA"]
 ```
@@ -41,7 +41,7 @@ flowchart LR
 .
 ├── migrations/             # Versioned D1 schema
 ├── server/
-│   ├── current-user.ts     # Access JWT, local identity, and D1 user module
+│   ├── current-user.ts     # Access header, local identity, and D1 user module
 │   ├── admin-role.ts       # Configured email allowlist and administrator check
 │   ├── admin-users.ts      # Administrator user directory module
 │   ├── profile.ts          # Schema issue to API error adapter
@@ -54,7 +54,7 @@ flowchart LR
 └── wrangler.jsonc
 ```
 
-`current-user.ts` is the main identity seam. Hono routes call `resolve()` to obtain the current application user. Access JWT verification, localhost identity, automatic D1 provisioning, and Access subject updates after a user rejoins are encapsulated inside the module.
+`current-user.ts` is the main identity seam. Hono routes call `resolve()` to obtain the current application user. The Cloudflare-injected email header, local identity, and automatic D1 provisioning are encapsulated inside the module.
 
 ## Local development
 
@@ -90,7 +90,7 @@ This user is also a default local administrator. Override `LOCAL_DEV_USER_EMAIL`
 
 Only add trusted development addresses to `LOCAL_DEV_ALLOWED_HOSTS`; every allowed host receives the configured local identity without Cloudflare Access authentication.
 
-Production configuration always uses `AUTH_MODE=access` and contains no local user email. A production request must carry a valid Access JWT even if its internal request URL uses a localhost hostname.
+Production configuration always uses `AUTH_MODE=access` and contains no local user email. A production request must carry the email header injected by Cloudflare Access even if its internal request URL uses a localhost hostname.
 
 Wrangler persists local D1 state under `.wrangler/`. To rebuild local data, remove the relevant local development state and apply the migration again. Never use that reset procedure against the remote database.
 
@@ -138,23 +138,20 @@ Create a **Self-hosted application** in Cloudflare Zero Trust:
 
 1. Enter the custom domain that the Worker will use, such as `family.example.com`.
 2. Create an Allow policy containing only approved family email addresses.
-3. Record the Access application's **AUD tag**.
-4. Record the team domain, such as `https://your-team.cloudflareaccess.com`.
+3. Protect the entire hostname so every request reaches the Worker through Access.
 
-Add the values to `wrangler.jsonc`:
+Keep production authentication enabled in `wrangler.jsonc`:
 
 ```jsonc
 {
   "vars": {
     "AUTH_MODE": "access",
     "ADMIN_EMAILS": "first-parent@example.com,second-parent@example.com",
-    "CF_ACCESS_TEAM_DOMAIN": "https://your-team.cloudflareaccess.com",
-    "CF_ACCESS_AUD": "your-access-application-aud",
   },
 }
 ```
 
-The Access values are not passwords. Security comes from the JWT issued by Access, Cloudflare's signing keys, and the Worker's checks for issuer, audience, expiration, and token type.
+The Worker reads `Cf-Access-Authenticated-User-Email` after Access allows the request. It does not independently verify an Access JWT, so preventing alternate routes around Access is part of the security boundary.
 
 ### 4. Configure the Worker domain
 
@@ -187,18 +184,9 @@ The deploy script runs type checking, integration tests, and a production build 
 
 ## Identity and user records
 
-Production requests must contain the Cloudflare-injected `Cf-Access-Jwt-Assertion`. The Worker:
+Production requests must contain the Cloudflare-injected `Cf-Access-Authenticated-User-Email` header. The Worker normalizes that email and finds or creates the matching D1 user. If the header is absent, the API returns `401`.
 
-1. Fetches Access JWKS from the team domain.
-2. Verifies the RS256 signature.
-3. Verifies the issuer and application audience.
-4. Verifies expiration and `type === "app"`.
-5. Reads the verified `sub` and email.
-6. Finds or creates a D1 user by normalized email.
-
-The application uses its own UUID as the user primary key. Email is the verified login identity, while `access_subject` retains the latest Access subject. If a family member is removed from Zero Trust and later added again, their Access subject may change. The next login finds the original profile by email and updates the subject.
-
-Do not trust `Cf-Access-Authenticated-User-Email` by itself, and do not remove JWT verification from the Worker.
+The application uses its own UUID as the user primary key and treats email as the login identity. It deliberately trusts Cloudflare Access to authenticate the request before it reaches the Worker. Therefore the production hostname must remain fully protected by Access, and `workers.dev`, preview URLs, and unprotected alternate routes must remain disabled.
 
 ## Administrator
 
@@ -212,7 +200,7 @@ Do not trust `Cf-Access-Authenticated-User-Email` by itself, and do not remove J
 }
 ```
 
-Comparisons are case-insensitive, surrounding whitespace is ignored, and authorization uses only the current user's JWT-verified email. Administrator status is never stored in D1, so database content cannot grant privileges. Change the allowlist by updating configuration and redeploying. The legacy `ADMIN_EMAIL` variable remains a fallback for existing deployments when `ADMIN_EMAILS` is absent.
+Comparisons are case-insensitive, surrounding whitespace is ignored, and authorization uses only the email injected by Cloudflare Access. Administrator status is never stored in D1, so database content cannot grant privileges. Change the allowlist by updating configuration and redeploying. The legacy `ADMIN_EMAIL` variable remains a fallback for existing deployments when `ADMIN_EMAILS` is absent.
 
 The administrator page is available at:
 
@@ -251,7 +239,7 @@ Profile request:
 }
 ```
 
-Each field may be `null` to clear it. Clients cannot submit a user ID, so profile updates always apply to the user identified by the JWT.
+Each field may be `null` to clear it. Clients cannot submit a user ID, so profile updates always apply to the user identified by the Access email header.
 
 The runtime schema lives in `shared/profile.ts`, and the `ProfileUpdate` TypeScript type is inferred directly from it. Hono uses the schema through `@hono/standard-validator`. A project adapter converts validation issues into stable `422` field errors and preserves malformed JSON as a separate `400 invalid_json` response. The Standard Schema boundary also keeps routes independent from validator-specific middleware.
 
@@ -277,7 +265,7 @@ At minimum, update:
 1. The package name in `package.json`.
 2. The Worker name in `wrangler.jsonc`.
 3. The D1 database name and ID.
-4. The Access team domain and AUD.
+4. The Cloudflare Access application and production hostname.
 5. The production `ADMIN_EMAILS` allowlist.
 6. The local development user and administrator allowlist in `.dev.vars`.
 7. The page name, colors, and application-specific fields.
@@ -287,9 +275,10 @@ Keep `migrations/0001_create_users.sql` and the identity module, then add tables
 ## Security boundaries
 
 - Cloudflare Access blocks visitors outside the allowlist.
-- Worker JWT verification rejects forged ordinary request headers.
-- D1 queries use only the verified current user ID.
-- Administrator status comes only from configuration and verified email.
+- The Worker trusts the email header injected at the Access-protected boundary.
+- Disabling `workers.dev`, preview URLs, and unprotected routes prevents clients from bypassing that boundary and forging the email header.
+- D1 queries use only the resolved current user ID.
+- Administrator status comes only from configuration and the Access-provided email.
 - Both `/admin` and `/api/admin/*` enforce server-side authorization.
 - Local identity requires explicit `AUTH_MODE=local` and a loopback or explicitly allowed development hostname.
 - Production disables `workers.dev` and preview URLs.

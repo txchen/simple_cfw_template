@@ -141,7 +141,7 @@ Never run local reset procedures against this remote database.
 
 ### Configure Cloudflare Access
 
-Create a Zero Trust **Self-hosted application** for the production hostname and an Allow policy containing only approved users. Record its AUD tag and the Cloudflare Access team domain.
+Create a Zero Trust **Self-hosted application** for the production hostname and an Allow policy containing only approved users. Protect the entire hostname so every request reaches the Worker through Access.
 
 Set the production variables in `wrangler.jsonc`:
 
@@ -150,13 +150,11 @@ Set the production variables in `wrangler.jsonc`:
   "vars": {
     "AUTH_MODE": "access",
     "ADMIN_EMAILS": "admin@example.com",
-    "CF_ACCESS_TEAM_DOMAIN": "https://your-team.cloudflareaccess.com",
-    "CF_ACCESS_AUD": "your-real-access-application-aud",
   },
 }
 ```
 
-Production must use `AUTH_MODE=access`. Do not add `LOCAL_DEV_USER_EMAIL` to production configuration. The team domain and AUD identify the Access application; authentication still depends on verifying Cloudflare's signed JWT.
+Production must use `AUTH_MODE=access`. Do not add `LOCAL_DEV_USER_EMAIL` or `LOCAL_DEV_ALLOWED_HOSTS` to production configuration. The Worker trusts the `Cf-Access-Authenticated-User-Email` header injected by Access and does not independently verify a JWT, so an unprotected route to the Worker would bypass the authentication boundary.
 
 ### Configure the production hostname
 
