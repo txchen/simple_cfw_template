@@ -58,6 +58,8 @@ flowchart LR
 
 ## Local development
 
+See the [local development and deployment runbook](docs/development-and-deployment.md) for the complete setup, validation, release, and post-deployment checklists.
+
 Requires [Vite+](https://viteplus.dev/) and a Cloudflare account. Vite+ manages the supported Node.js and npm versions declared by the project.
 
 Install the `vp` CLI on macOS or Linux, then open a new terminal:
