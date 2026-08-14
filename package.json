@@ -33,7 +33,7 @@
     "vite-plus": "0.2.9",
     "vitest": "4.1.10",
     "vue-tsc": "^3.3.8",
-    "wrangler": "^4.114.0"
+    "wrangler": "^4.123.0"
   },
   "overrides": {
     "vite": "npm:@voidzero-dev/vite-plus-core@0.2.9",
