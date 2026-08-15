@@ -1,5 +1,5 @@
 {
-  "name": "simple-cfw-template",
+  "name": "cfwtemplate",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,6 @@
     "preview": "vp preview",
     "typecheck": "vp exec vue-tsc --noEmit -p tsconfig.app.json && vp exec tsc --noEmit -p tsconfig.worker.json && vp exec tsc --noEmit -p tsconfig.node.json",
     "test": "vp test",
-    "test:run": "vp test",
     "check": "vp check && vp run typecheck && vp test && vp build",
     "deploy": "vp run check && vp exec wrangler deploy",
     "db:migrate:local": "vp exec wrangler d1 migrations apply DB --local",

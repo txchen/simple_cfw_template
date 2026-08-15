@@ -1,74 +1,38 @@
-# Simple Cloudflare Family App Starter
+# Cloudflare Family App
 
 [![CI](https://github.com/txchen/simple_cfw_template/actions/workflows/ci.yml/badge.svg)](https://github.com/txchen/simple_cfw_template/actions/workflows/ci.yml)
 
-A full-stack Cloudflare starter for private family websites:
+A private family profile application deployed at [cfwt.txchen.win](https://cfwt.txchen.win).
 
-- **Cloudflare Access** handles login, sessions, and the allowlist.
-- **Hono + Cloudflare Workers** provide the backend API.
-- **D1** stores application-owned user profiles.
-- **Vue 3 + Vite** provide the responsive frontend.
-- Frontend and backend share one domain, so no separate CORS setup is needed.
+- **Cloudflare Access** handles login, sessions, and the entry allowlist.
+- **Hono + Cloudflare Workers** provide the API.
+- **D1** stores application-owned users and profiles.
+- **Vue 3 + Vite+** provide the frontend and toolchain.
 
-The application stores no passwords and creates no second login session. Cloudflare Access verifies each visitor and injects their email into the request; the Worker trusts that Access-protected boundary and finds or creates a D1 user by normalized email address.
+The application stores no passwords and creates no second login session. Cloudflare Access verifies each visitor and injects their email into the request; the Worker trusts that protected edge and resolves a D1 user by normalized email.
 
 ```mermaid
 flowchart LR
-    Browser["Family browser"] --> Access["Cloudflare Access<br/>Login and allowlist"]
+    Browser["Browser"] --> Access["Cloudflare Access<br/>Login and allowlist"]
     Access --> Worker["Hono Worker<br/>Injected email header"]
     Worker --> D1["D1<br/>Users and profiles"]
     Worker --> Vue["Vue SPA"]
 ```
 
-## Features
+## Documentation
 
-- Automatic user creation on first visit
-- Current user and identity provider display
-- Editable display name, avatar URL, and IANA timezone
-- Configuration-driven administrator allowlist
-- Administrator-only user directory page and API
-- Valibot + Hono Standard Schema request validation
-- Stable field validation and safe API error responses
-- Cloudflare Access logout
-- Localhost-only development identity
-- Versioned D1 SQL migrations
-- D1 integration tests inside the Workers runtime
-- Responsive mobile and desktop layouts
-
-## Project structure
-
-```text
-.
-├── migrations/             # Versioned D1 schema
-├── server/
-│   ├── current-user.ts     # Access header, local identity, and D1 user module
-│   ├── admin-role.ts       # Configured email allowlist and administrator check
-│   ├── admin-users.ts      # Administrator user directory module
-│   ├── profile.ts          # Schema issue to API error adapter
-│   ├── app.ts              # Hono routes and error handling
-│   └── index.ts            # Worker entry point
-├── shared/                 # Shared contracts and Valibot schema
-├── src/                    # Vue SPA
-├── test/                   # Workers and local D1 integration tests
-├── vite.config.ts
-└── wrangler.jsonc
-```
-
-`current-user.ts` is the main identity seam. Hono routes call `resolve()` to obtain the current application user. The Cloudflare-injected email header, local identity, and automatic D1 provisioning are encapsulated inside the module.
+- [Local development and deployment runbook](docs/development-and-deployment.md)
+- [Architecture and decisions](docs/architecture.md)
 
 ## Local development
 
-See the [local development and deployment runbook](docs/development-and-deployment.md) for the complete setup, validation, release, and post-deployment checklists.
-
-Requires [Vite+](https://viteplus.dev/) and a Cloudflare account. Vite+ manages the supported Node.js and npm versions declared by the project.
-
-Install the `vp` CLI on macOS or Linux, then open a new terminal:
+Install Vite+, then open a new terminal:
 
 ```bash
 curl -fsSL https://vite.plus | bash
 ```
 
-Install dependencies and start the application:
+Prepare and start the project:
 
 ```bash
 vp install
@@ -77,159 +41,54 @@ vp run db:migrate:local
 vp dev
 ```
 
-Open the localhost URL printed by Vite. The default local user is:
+Open the URL printed by Vite+, normally `http://localhost:5173`.
 
-```text
-developer@example.com
-```
+Local authentication requires `AUTH_MODE=local` and uses `LOCAL_DEV_USER_EMAIL`. Loopback hostnames are allowed automatically. Trusted development hostnames or IP addresses can be listed explicitly in `LOCAL_DEV_ALLOWED_HOSTS`; every listed address receives the configured local identity without Cloudflare Access.
 
-This user is also a default local administrator. Override `LOCAL_DEV_USER_EMAIL` and the comma-separated `ADMIN_EMAILS` list in the untracked `.dev.vars` file as needed. Local identity requires both conditions:
+Local D1 state is persisted below `.wrangler/state/v3/d1/`. Workers integration tests use an isolated D1 database and do not modify local development data.
 
-- `AUTH_MODE` is `local` in `.dev.vars`.
-- The request uses `localhost`, `127.0.0.1`, `::1`, or a hostname explicitly listed in the comma-separated `LOCAL_DEV_ALLOWED_HOSTS` variable.
+## Validation and deployment
 
-Only add trusted development addresses to `LOCAL_DEV_ALLOWED_HOSTS`; every allowed host receives the configured local identity without Cloudflare Access authentication.
-
-Production configuration always uses `AUTH_MODE=access` and contains no local user email. A production request must carry the email header injected by Cloudflare Access even if its internal request URL uses a localhost hostname.
-
-Wrangler persists local D1 state under `.wrangler/`. To rebuild local data, remove the relevant local development state and apply the migration again. Never use that reset procedure against the remote database.
-
-## Cloudflare deployment
-
-### 1. Log in to Wrangler
+Run the complete local gate:
 
 ```bash
-vp exec wrangler login
+vp run check
 ```
 
-### 2. Create a D1 database
+This runs Oxfmt, Oxlint, explicit Vue/TypeScript checks, Workers integration tests, and a production build.
 
-Rename the Worker and database after copying this starter, then create the database:
-
-```bash
-vp exec wrangler d1 create your-app-db
-```
-
-Copy the returned database ID into `wrangler.jsonc`:
-
-```jsonc
-{
-  "name": "your-app",
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "your-app-db",
-      "database_id": "your-real-database-id",
-      "migrations_dir": "migrations",
-    },
-  ],
-}
-```
-
-Apply the migration:
+When a release includes unapplied D1 migrations, review and apply them separately from deployment:
 
 ```bash
 vp run db:migrate:remote
 ```
 
-### 3. Create a Cloudflare Access application
-
-Create a **Self-hosted application** in Cloudflare Zero Trust:
-
-1. Enter the custom domain that the Worker will use, such as `family.example.com`.
-2. Create an Allow policy containing only approved family email addresses.
-3. Protect the entire hostname so every request reaches the Worker through Access.
-
-Keep production authentication enabled in `wrangler.jsonc`:
-
-```jsonc
-{
-  "vars": {
-    "AUTH_MODE": "access",
-    "ADMIN_EMAILS": "first-parent@example.com,second-parent@example.com",
-  },
-}
-```
-
-The Worker reads `Cf-Access-Authenticated-User-Email` after Access allows the request. It does not independently verify an Access JWT, so preventing alternate routes around Access is part of the security boundary.
-
-### 4. Configure the Worker domain
-
-The starter disables `workers.dev` and preview URLs to avoid alternate public addresses that bypass Access. Before deployment, configure a Custom Domain that exactly matches the Access application.
-
-The recommended configuration lives in `wrangler.jsonc`:
-
-```jsonc
-{
-  "routes": [
-    {
-      "pattern": "family.example.com",
-      "custom_domain": true,
-    },
-  ],
-}
-```
-
-You may instead add the Custom Domain in the Cloudflare dashboard after deployment. Until the domain is connected, this fail-closed configuration exposes no public URL. The starter does not ship a route because every copied project uses a different domain.
-
-Access should protect the entire website, not only `/api/*`, so HTML, JavaScript, and API requests all pass through Access first.
-
-### 5. Deploy
+Deploy the already configured Worker, assets, D1 binding, and custom domain:
 
 ```bash
 vp run deploy
 ```
 
-The deploy script runs type checking, integration tests, and a production build before invoking Wrangler.
+See the [runbook](docs/development-and-deployment.md) for migration ordering, authentication profiles, and post-deployment verification.
 
-## Identity and user records
+## Identity and authorization
 
-Production requests must contain the Cloudflare-injected `Cf-Access-Authenticated-User-Email` header. The Worker normalizes that email and finds or creates the matching D1 user. If the header is absent, the API returns `401`.
+Production requests must contain `Cf-Access-Authenticated-User-Email`, which Cloudflare injects after Access allows the request. Missing identity returns `401`. The Worker does not independently verify an Access JWT, so the complete production hostname must remain protected by Access and alternate public routes must remain disabled.
 
-The application uses its own UUID as the user primary key and treats email as the login identity. It deliberately trusts Cloudflare Access to authenticate the request before it reaches the Worker. Therefore the production hostname must remain fully protected by Access, and `workers.dev`, preview URLs, and unprotected alternate routes must remain disabled.
+`ADMIN_EMAILS` is a comma-separated application administrator allowlist. It does not grant entry through Cloudflare Access; an administrator must also be allowed by the Access policy. Administrator checks are enforced on the server for `/admin` and `/api/admin/*`.
 
-## Administrator
+The production logout link is `/cdn-cgi/access/logout` and clears the Cloudflare Access team session.
 
-`ADMIN_EMAILS` contains a comma-separated administrator allowlist:
+## API
 
-```jsonc
-{
-  "vars": {
-    "ADMIN_EMAILS": "first-parent@example.com,second-parent@example.com",
-  },
-}
-```
+| Method  | Path               | Description                                 |
+| ------- | ------------------ | ------------------------------------------- |
+| `GET`   | `/api/health`      | Report Worker health                        |
+| `GET`   | `/api/me`          | Resolve or create the current user          |
+| `PATCH` | `/api/me/profile`  | Update the current user's profile           |
+| `GET`   | `/api/admin/users` | List users for an application administrator |
 
-Comparisons are case-insensitive, surrounding whitespace is ignored, and authorization uses only the email injected by Cloudflare Access. Administrator status is never stored in D1, so database content cannot grant privileges. Change the allowlist by updating configuration and redeploying. The legacy `ADMIN_EMAIL` variable remains a fallback for existing deployments when `ADMIN_EMAILS` is absent.
-
-The administrator page is available at:
-
-```text
-/admin
-```
-
-It lists every user who has entered the application and received a D1 record. Both `/admin` navigation and `/api/admin/*` enforce server-side administrator checks. Hiding a frontend link is only a user experience detail, not a security control.
-
-## Logout behavior
-
-The production logout button points to:
-
-```text
-/cdn-cgi/access/logout
-```
-
-Cloudflare clears the Access cookie. Access currently logs the user out of the entire team session, so other protected applications under the same team may also require a new login.
-
-## Backend API
-
-| Method  | Path               | Description                                           |
-| ------- | ------------------ | ----------------------------------------------------- |
-| `GET`   | `/api/health`      | Report Worker health                                  |
-| `GET`   | `/api/me`          | Verify identity and return or create the current user |
-| `PATCH` | `/api/me/profile`  | Update the current user's profile                     |
-| `GET`   | `/api/admin/users` | List all users for the administrator                  |
-
-Profile request:
+Profile update fields are optional and may be `null` to clear them:
 
 ```json
 {
@@ -239,48 +98,38 @@ Profile request:
 }
 ```
 
-Each field may be `null` to clear it. Clients cannot submit a user ID, so profile updates always apply to the user identified by the Access email header.
-
-The runtime schema lives in `shared/profile.ts`, and the `ProfileUpdate` TypeScript type is inferred directly from it. Hono uses the schema through `@hono/standard-validator`. A project adapter converts validation issues into stable `422` field errors and preserves malformed JSON as a separate `400 invalid_json` response. The Standard Schema boundary also keeps routes independent from validator-specific middleware.
-
 ## Commands
 
-| Command                    | Purpose                                                               |
-| -------------------------- | --------------------------------------------------------------------- |
-| `vp install`               | Install dependencies with the project's pinned package manager        |
-| `vp dev`                   | Start Vite in the Workers runtime                                     |
-| `vp check`                 | Check formatting and lint rules                                       |
-| `vp run typecheck`         | Check Vue, Worker, and build configuration types                      |
-| `vp test`                  | Run the Workers integration tests once                                |
-| `vp build`                 | Build the Worker and Vue assets                                       |
-| `vp run check`             | Run formatting, linting, type checking, tests, and a production build |
-| `vp run db:migrate:local`  | Apply migrations to local D1                                          |
-| `vp run db:migrate:remote` | Apply migrations to remote D1                                         |
-| `vp run deploy`            | Validate and deploy to Cloudflare                                     |
+| Command                    | Purpose                                                           |
+| -------------------------- | ----------------------------------------------------------------- |
+| `vp install`               | Install dependencies with the pinned package manager              |
+| `vp dev`                   | Start the application in the local Workers runtime                |
+| `vp check`                 | Check formatting and lint rules                                   |
+| `vp run typecheck`         | Check Vue, Worker, and configuration types                        |
+| `vp test`                  | Run Workers and isolated D1 integration tests                     |
+| `vp build`                 | Build Worker and client assets                                    |
+| `vp run check`             | Run formatting, linting, type checks, tests, and production build |
+| `vp run db:migrate:local`  | Apply pending migrations to local D1                              |
+| `vp run db:migrate:remote` | Apply pending migrations to production D1                         |
+| `vp run deploy`            | Validate and deploy to Cloudflare                                 |
+| `vp run cf-typegen`        | Regenerate Cloudflare binding types                               |
 
-## Copying this starter
+## Project structure
 
-At minimum, update:
+```text
+migrations/     Versioned D1 schema changes
+server/         Hono routes, users, authorization, and errors
+shared/         Browser/Worker contracts and runtime profile schema
+src/            Vue shell, pages, API client, and page-local styles
+test/           Identity, profile, admin, and API-client integration tests
+docs/           Architecture and operational runbook
+```
 
-1. The package name in `package.json`.
-2. The Worker name in `wrangler.jsonc`.
-3. The D1 database name and ID.
-4. The Cloudflare Access application and production hostname.
-5. The production `ADMIN_EMAILS` allowlist.
-6. The local development user and administrator allowlist in `.dev.vars`.
-7. The page name, colors, and application-specific fields.
+## Security invariants
 
-Keep `migrations/0001_create_users.sql` and the identity module, then add tables and `/api/*` routes for the family application.
-
-## Security boundaries
-
-- Cloudflare Access blocks visitors outside the allowlist.
-- The Worker trusts the email header injected at the Access-protected boundary.
-- Disabling `workers.dev`, preview URLs, and unprotected routes prevents clients from bypassing that boundary and forging the email header.
-- D1 queries use only the resolved current user ID.
-- Administrator status comes only from configuration and the Access-provided email.
-- Both `/admin` and `/api/admin/*` enforce server-side authorization.
-- Local identity requires explicit `AUTH_MODE=local` and a loopback or explicitly allowed development hostname.
-- Production disables `workers.dev` and preview URLs.
-- Profile updates use an allowlist of fields rather than arbitrary database keys.
-- Cloudflare manages the Access cookie; Vue never reads or stores the token.
+- Cloudflare Access protects the entire production hostname.
+- `workers.dev` and preview URLs remain disabled.
+- The Worker trusts only the email header injected at that protected edge.
+- Administrator status comes only from `ADMIN_EMAILS`, never from D1 data.
+- Profile updates are scoped to the resolved current user and allowlisted fields.
+- Local identity requires explicit local mode and a loopback or explicitly trusted hostname.

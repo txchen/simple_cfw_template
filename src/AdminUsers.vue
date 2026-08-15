@@ -2,30 +2,13 @@
 import { computed, onMounted, ref } from "vue";
 import type { AdminUserSummary } from "../shared/contracts";
 import { getAdminUsers } from "./api";
+import { formatMemberDate, userInitials } from "./user-format";
 
 const users = ref<AdminUserSummary[]>([]);
 const loading = ref(true);
 const errorMessage = ref("");
 
 const profileCount = computed(() => users.value.filter((user) => user.displayName).length);
-
-function initials(user: AdminUserSummary) {
-  const source = user.displayName || user.email;
-  return source
-    .split(/[\s@._-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  }).format(new Date(value));
-}
 
 async function loadUsers() {
   loading.value = true;
@@ -97,7 +80,7 @@ onMounted(loadUsers);
                   referrerpolicy="no-referrer"
                 />
                 <span v-else class="listed-avatar listed-avatar-fallback">
-                  {{ initials(listedUser) }}
+                  {{ userInitials(listedUser.displayName, listedUser.email) }}
                 </span>
                 <span class="listed-identity">
                   <strong>{{ listedUser.displayName || "Name not set" }}</strong>
@@ -109,7 +92,7 @@ onMounted(loadUsers);
               {{ listedUser.timezone || "Not set" }}
             </td>
             <td data-label="Member since">
-              {{ formatDate(listedUser.createdAt) }}
+              {{ formatMemberDate(listedUser.createdAt, "short") }}
             </td>
             <td data-label="Role" class="role-cell">
               <span v-if="listedUser.isAdmin" class="admin-badge">Admin</span>

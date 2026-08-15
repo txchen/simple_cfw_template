@@ -16,7 +16,7 @@ export async function getCurrentUser(): Promise<AppUser> {
     credentials: "same-origin",
     headers: { Accept: "application/json" },
   });
-  return readUserResponse(response);
+  return readApiProperty<AppUser>(response, "user");
 }
 
 export async function updateProfile(profile: ProfileUpdate): Promise<AppUser> {
@@ -29,7 +29,7 @@ export async function updateProfile(profile: ProfileUpdate): Promise<AppUser> {
     },
     body: JSON.stringify(profile),
   });
-  return readUserResponse(response);
+  return readApiProperty<AppUser>(response, "user");
 }
 
 export async function getAdminUsers(): Promise<AdminUserSummary[]> {
@@ -37,28 +37,49 @@ export async function getAdminUsers(): Promise<AdminUserSummary[]> {
     credentials: "same-origin",
     headers: { Accept: "application/json" },
   });
-  const body = (await response.json()) as { users: AdminUserSummary[] } | ApiErrorBody;
-
-  if (!response.ok || !("users" in body)) {
-    throw toApiError(body);
-  }
-  return body.users;
+  return readApiProperty<AdminUserSummary[]>(response, "users");
 }
 
-async function readUserResponse(response: Response): Promise<AppUser> {
-  const body = (await response.json()) as { user: AppUser } | ApiErrorBody;
+async function readApiProperty<T>(response: Response, property: string): Promise<T> {
+  const body = await readJsonObject(response);
 
-  if (!response.ok || !("user" in body)) {
-    throw toApiError(body);
+  if (isApiErrorBody(body)) {
+    throw new ApiError(body.error.message, body.error.code, body.error.fields);
   }
 
-  return body.user;
+  if (!response.ok || !(property in body)) {
+    throw unexpectedResponse();
+  }
+
+  return body[property] as T;
 }
 
-function toApiError(body: ApiErrorBody | object): ApiError {
-  const error =
-    "error" in body
-      ? (body as ApiErrorBody).error
-      : { code: "unexpected_response", message: "Unexpected API response." };
-  return new ApiError(error.message, error.code, error.fields);
+async function readJsonObject(response: Response): Promise<Record<string, unknown>> {
+  if (!response.headers.get("Content-Type")?.toLowerCase().includes("application/json")) {
+    throw unexpectedResponse();
+  }
+
+  try {
+    const body: unknown = await response.json();
+    if (typeof body !== "object" || body === null || Array.isArray(body)) {
+      throw unexpectedResponse();
+    }
+    return body as Record<string, unknown>;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw unexpectedResponse();
+  }
+}
+
+function isApiErrorBody(
+  body: Record<string, unknown>,
+): body is Record<string, unknown> & ApiErrorBody {
+  if (!("error" in body) || typeof body.error !== "object" || body.error === null) return false;
+
+  const error = body.error as Record<string, unknown>;
+  return typeof error.code === "string" && typeof error.message === "string";
+}
+
+function unexpectedResponse(): ApiError {
+  return new ApiError("Unexpected response from the server.", "unexpected_response");
 }

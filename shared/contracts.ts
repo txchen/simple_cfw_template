@@ -16,16 +16,7 @@ export interface AppUser {
   isAdmin: boolean;
 }
 
-export interface AdminUserSummary {
-  id: string;
-  email: string;
-  displayName: string | null;
-  avatarUrl: string | null;
-  timezone: string | null;
-  createdAt: string;
-  updatedAt: string;
-  isAdmin: boolean;
-}
+export type AdminUserSummary = Omit<AppUser, "authProvider">;
 
 export interface ApiErrorBody {
   error: {

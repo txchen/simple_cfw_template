@@ -1,0 +1,229 @@
+.admin-users-card {
+  padding: 38px 42px 22px;
+}
+
+.admin-section-heading {
+  align-items: center;
+  margin-bottom: 22px;
+}
+
+.user-stats {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.user-stats strong {
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 18px;
+}
+
+.inline-state {
+  min-height: 230px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.inline-state .spinner {
+  width: 28px;
+  height: 28px;
+  color: var(--green);
+  border-color: rgb(31 93 71 / 18%);
+  border-top-color: var(--green);
+}
+
+.inline-state p {
+  margin: 0;
+}
+
+.users-table-wrap {
+  overflow-x: auto;
+}
+
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.users-table th {
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--line);
+  color: #89928d;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.users-table td {
+  padding: 17px 14px;
+  border-bottom: 1px solid rgb(217 221 214 / 75%);
+  color: var(--muted);
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.users-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.listed-user {
+  min-width: 220px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.listed-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  object-fit: cover;
+}
+
+.listed-avatar-fallback {
+  color: #fff;
+  background: var(--green);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.listed-identity {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.listed-identity strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.listed-identity small {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.role-cell {
+  text-align: right;
+}
+
+.admin-badge,
+.member-label {
+  display: inline-flex;
+  padding: 6px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.admin-badge {
+  color: #fff;
+  background: var(--green);
+}
+
+.member-label {
+  color: #78827d;
+  background: #eef0ec;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 760px) {
+  .admin-users-card {
+    padding: 28px 22px 20px;
+  }
+  .admin-section-heading {
+    align-items: flex-start;
+  }
+
+  .user-stats {
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .users-table-wrap {
+    overflow: visible;
+  }
+
+  .users-table,
+  .users-table tbody,
+  .users-table tr,
+  .users-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .users-table thead {
+    display: none;
+  }
+
+  .users-table tr {
+    padding: 18px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .users-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .users-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 6px 0;
+    border: 0;
+    text-align: right;
+  }
+
+  .users-table td::before {
+    content: attr(data-label);
+    color: #89928d;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .users-table td:first-child {
+    display: block;
+    padding: 0 0 10px;
+    text-align: left;
+  }
+
+  .users-table td:first-child::before {
+    display: none;
+  }
+
+  .listed-user {
+    min-width: 0;
+  }
+}

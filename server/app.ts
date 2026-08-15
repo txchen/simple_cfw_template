@@ -3,11 +3,10 @@ import { Hono, type MiddlewareHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
 import type { AppUser } from "../shared/contracts";
 import { profileUpdateSchema } from "../shared/profile";
-import { createAdminUsersModule, type AdminUsersModule } from "./admin-users";
-import { createCurrentUserModule, type CurrentUserModule } from "./current-user";
 import type { Bindings } from "./env";
 import { HttpError } from "./errors";
 import { profileValidationError } from "./profile";
+import { listUsers, resolveCurrentUser, updateCurrentUserProfile } from "./users";
 
 type HonoEnv = {
   Bindings: Bindings;
@@ -16,10 +15,7 @@ type HonoEnv = {
   };
 };
 
-export function createApp(
-  currentUsers: CurrentUserModule = createCurrentUserModule(),
-  adminUsers: AdminUsersModule = createAdminUsersModule(),
-) {
+export function createApp() {
   const app = new Hono<HonoEnv>();
 
   app.get("/api/health", (c) =>
@@ -30,7 +26,7 @@ export function createApp(
   );
 
   const requireCurrentUser: MiddlewareHandler<HonoEnv> = async (c, next) => {
-    const user = await currentUsers.resolve(c.req.raw, c.env);
+    const user = await resolveCurrentUser(c.req.raw, c.env);
     c.set("currentUser", user);
     await next();
   };
@@ -59,18 +55,13 @@ export function createApp(
     async (c) => {
       const currentUser = c.get("currentUser");
       const profile = c.req.valid("json");
-      const user = await currentUsers.updateProfile(
-        currentUser.id,
-        profile,
-        currentUser.authProvider,
-        c.env,
-      );
+      const user = await updateCurrentUserProfile(currentUser, profile, c.env);
       return c.json({ user });
     },
   );
 
   app.get("/api/admin/users", async (c) => {
-    const users = await adminUsers.list(c.env);
+    const users = await listUsers(c.env);
     return c.json({ users });
   });
 
