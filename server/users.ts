@@ -124,22 +124,7 @@ async function findOrCreateUser(email: string, db: D1Database): Promise<UserRow>
   if (existing) return existing;
 
   const now = new Date().toISOString();
-  const id = crypto.randomUUID();
-  try {
-    await insertUserWithoutLegacySubject(id, email, now, db);
-  } catch (error) {
-    if (!isLegacySubjectConstraint(error)) throw error;
-    await db
-      .prepare(
-        `INSERT INTO users (
-           id, email, access_subject, display_name, avatar_url, timezone, created_at, updated_at
-         )
-         VALUES (?, ?, ?, NULL, NULL, NULL, ?, ?)
-         ON CONFLICT(email) DO NOTHING`,
-      )
-      .bind(id, email, `access-email:${email}`, now, now)
-      .run();
-  }
+  await insertUser(crypto.randomUUID(), email, now, db);
 
   const created = await findUserByEmail(email, db);
   if (!created) {
@@ -148,7 +133,7 @@ async function findOrCreateUser(email: string, db: D1Database): Promise<UserRow>
   return created;
 }
 
-function insertUserWithoutLegacySubject(
+function insertUser(
   id: string,
   email: string,
   now: string,
@@ -164,10 +149,6 @@ function insertUserWithoutLegacySubject(
     )
     .bind(id, email, now, now)
     .run();
-}
-
-function isLegacySubjectConstraint(error: unknown): boolean {
-  return error instanceof Error && error.message.includes("users.access_subject");
 }
 
 function findUserByEmail(email: string, db: D1Database): Promise<UserRow | null> {

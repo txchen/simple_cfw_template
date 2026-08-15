@@ -143,8 +143,6 @@ For a destructive migration, use a staged rollout:
 2. Apply the remote migration.
 3. Remove temporary compatibility code in a later deployment.
 
-`0002_remove_access_subject.sql` follows this rule: `server/users.ts` temporarily supports the pre-migration `access_subject` constraint. Deploy this code before applying `0002`. After production has applied it, the compatibility fallback can be deleted.
-
 Always confirm Wrangler reports the expected account and database before approving a remote migration.
 
 ## Deployment
@@ -156,13 +154,6 @@ vp run deploy
 ```
 
 `vp run deploy` repeats the complete validation gate, builds the Worker and static assets, then deploys the custom-domain trigger.
-
-For the current `0002` staged release:
-
-```bash
-vp run deploy
-vp run db:migrate:remote
-```
 
 ## Post-deployment verification
 
